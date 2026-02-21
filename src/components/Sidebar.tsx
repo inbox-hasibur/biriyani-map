@@ -77,8 +77,8 @@ function NavIcon({
       <button
         onClick={() => setActive(id)}
         className={`p-2.5 rounded-xl cursor-pointer transition-all duration-200 w-full flex items-center justify-center ${isActive
-            ? "bg-slate-900 text-white shadow-md"
-            : "text-slate-400 hover:bg-slate-900 hover:text-white"
+          ? "bg-slate-900 text-white shadow-md"
+          : "text-slate-400 hover:bg-slate-900 hover:text-white"
           }`}
         aria-label={label}
       >
