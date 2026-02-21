@@ -1,40 +1,19 @@
 "use client";
 
+// Client-only: this file imports Leaflet which requires `window`.
+// Do NOT import this in server-rendered components.
 import L from "leaflet";
-
-// Score-based marker colours:
-//   0–4   → Grey   (Unconfirmed)
-//   5–9   → Yellow (Almost Confirmed)
-//   10+   → Green  (Confirmed)
-//   < 0   → Grey   (Negative score, still visible unless hidden by DB trigger at -5)
-
-export type TrustLevel = "unconfirmed" | "almost" | "confirmed";
-
-export function getTrustLevel(score: number): TrustLevel {
-  if (score >= 10) return "confirmed";
-  if (score >= 5) return "almost";
-  return "unconfirmed";
-}
-
-const COLORS: Record<TrustLevel, { fill: string; glow: string; label: string }> = {
-  confirmed: { fill: "#16a34a", glow: "rgba(22,163,74,0.35)", label: "Confirmed" },
-  almost: { fill: "#eab308", glow: "rgba(234,179,8,0.30)", label: "Almost Confirmed" },
-  unconfirmed: { fill: "#94a3b8", glow: "rgba(148,163,184,0.25)", label: "Unconfirmed" },
-};
-
-export function getTrustMeta(score: number) {
-  return COLORS[getTrustLevel(score)];
-}
+import { getTrustMeta } from "./trustLevel";
 
 export function createCustomMarker(score: number = 0): L.DivIcon {
   const { fill, glow } = getTrustMeta(score);
-  const level = getTrustLevel(score);
+  const level = score >= 10 ? "confirmed" : score >= 5 ? "almost" : "unconfirmed";
   const innerIcon = level === "confirmed" ? "✓" : String(score);
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="34" height="46" viewBox="0 0 34 46">
       <defs>
-        <filter id="s${score}" x="-40%" y="-20%" width="180%" height="160%">
+        <filter id="sh" x="-40%" y="-20%" width="180%" height="160%">
           <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="${glow}" />
         </filter>
       </defs>
@@ -43,7 +22,7 @@ export function createCustomMarker(score: number = 0): L.DivIcon {
         fill="${fill}"
         stroke="white"
         stroke-width="2.5"
-        filter="url(#s${score})"
+        filter="url(#sh)"
       />
       <circle cx="17" cy="15" r="7" fill="white" opacity="0.92" />
       <text

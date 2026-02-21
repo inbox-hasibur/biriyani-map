@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useMapContext } from "./MapContext";
 import { useSpots, Spot } from "@/hooks/useSpots";
 import { createCustomMarker } from "@/lib/markerIcon";
+import { getTrustMeta } from "@/lib/trustLevel";
 import CreateSpotModal from "./CreateSpotModal";
 import type { SpotFormData } from "./CreateSpotModal";
 import { supabase } from "@/lib/supabaseClient";

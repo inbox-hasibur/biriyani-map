@@ -2,7 +2,7 @@
 
 import { X, Navigation, Clock, UtensilsCrossed } from "lucide-react";
 import { useMapContext } from "./MapContext";
-import { getTrustMeta } from "@/lib/markerIcon";
+import { getTrustMeta } from "@/lib/trustLevel";
 import VotingUI from "./VotingUI";
 
 export default function SpotDetailSheet() {

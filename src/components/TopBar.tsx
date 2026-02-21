@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Search, MapPin, X } from "lucide-react";
 import { useMapContext } from "./MapContext";
 import { useSpots } from "@/hooks/useSpots";
-import { getTrustLevel } from "@/lib/markerIcon";
+import { getTrustLevel } from "@/lib/trustLevel";
 
 export default function TopBar() {
   const [q, setQ] = useState("");
