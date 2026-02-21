@@ -80,7 +80,7 @@ export default function TopBar() {
         <div className="ui-card px-3 py-2 rounded-lg flex items-center gap-2">
           <label className="text-sm text-slate-600 select-none cursor-pointer">Verified only</label>
           <button
-            onClick={() => setVerifiedOnly((s) => !s)}
+            onClick={() => setVerifiedOnly(!verifiedOnly)}
             className={`w-10 h-6 flex items-center p-1 rounded-full transition ${verifiedOnly ? "bg-green-500" : "bg-slate-200"
               }`}
             aria-pressed={verifiedOnly}
