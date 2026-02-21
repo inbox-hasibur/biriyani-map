@@ -3,10 +3,9 @@
 import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
-import SpotDetailSheet from "@/components/SpotDetailSheet";
 import { MapProvider } from "@/components/MapContext";
 
-// Lazy load Map to avoid SSR "window is not defined" error
+// Lazy load components that depend on Leaflet (uses window)
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
   loading: () => (
@@ -15,7 +14,7 @@ const Map = dynamic(() => import("@/components/Map"), {
     </div>
   ),
 });
-
+const SpotDetailSheet = dynamic(() => import("@/components/SpotDetailSheet"), { ssr: false });
 export default function Home() {
   return (
     <main className="relative h-screen w-screen overflow-hidden">
