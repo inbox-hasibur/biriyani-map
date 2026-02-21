@@ -3,84 +3,178 @@
 /* Import Leaflet CSS */
 @import "leaflet/dist/leaflet.css";
 
+/* ─── Design Tokens ─── */
 :root {
   --bg: 245, 247, 250;
-  --muted: 100, 116, 139;
-  --accent: 255, 179, 0; /* warm yellow for primary CTA */
   --card: 255, 255, 255;
-  --primary-dk: 8, 18, 41;
-  --muted-2: 226, 232, 240;
+  --primary-dk: 15, 23, 42;
+  --muted: 100, 116, 139;
+  --accent-from: #fbbf24;
+  --accent-to: #f59e0b;
 }
 
-html, body {
+/* ─── Base Reset ─── */
+html,
+body {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
   background: rgb(var(--bg));
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
-/* App layout helpers */
-.app-main {
-  display: flex;
-  height: 100vh;
-  width: 100%;
-}
-
-/* Custom Map Styles */
+/* ─── Map Container ─── */
 .leaflet-container {
   width: 100%;
   height: 100%;
   z-index: 0;
-  background: linear-gradient(180deg, rgba(var(--bg),1) 0%, rgba(250,250,250,1) 100%);
+  background: rgb(var(--bg));
 }
 
-/* Floating UI card style used by TopBar and right panels */
+/* ─── Floating Card (shared by TopBar, Sidebar, Modals) ─── */
 .ui-card {
+  background: rgba(var(--card), 0.92);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  border-radius: 14px;
+  box-shadow:
+    0 4px 24px rgba(15, 23, 42, 0.06),
+    0 1px 3px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(var(--muted), 0.08);
+  color: rgb(var(--primary-dk));
+}
+
+/* ─── Sidebar Card (slightly more opaque) ─── */
+.sidebar-card {
   background: rgba(var(--card), 0.96);
-  backdrop-filter: blur(8px);
-  border-radius: 12px;
-  box-shadow: 0 8px 28px rgba(8,18,41,0.08);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(15, 23, 42, 0.08),
+    0 2px 6px rgba(15, 23, 42, 0.04);
   border: 1px solid rgba(var(--muted), 0.06);
   color: rgb(var(--primary-dk));
 }
 
-/* Primary CTA / track button */
-.cta-yellow {
-  background: linear-gradient(180deg, rgba(var(--accent),1) 0%, rgba(255,150,0,1) 100%);
+/* ─── TopBar Card ─── */
+.topbar-card {
+  background: rgba(var(--card), 0.94);
+  backdrop-filter: blur(14px) saturate(1.5);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  border-radius: 12px;
+  box-shadow:
+    0 4px 20px rgba(15, 23, 42, 0.06),
+    0 1px 3px rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(var(--muted), 0.07);
   color: rgb(var(--primary-dk));
-  box-shadow: 0 8px 22px rgba(255,179,0,0.16);
 }
 
-/* Reduce map controls clutter on small screens */
+/* ─── CTA Button ─── */
+.cta-yellow {
+  background: linear-gradient(180deg, var(--accent-from) 0%, var(--accent-to) 100%);
+  color: rgb(var(--primary-dk));
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.2);
+  font-weight: 600;
+}
+
+.cta-yellow:hover {
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+/* ─── Popup Styling ─── */
+.leaflet-popup-content-wrapper {
+  border-radius: 14px !important;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+  border: 1px solid rgba(100, 116, 139, 0.06) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+  min-width: 220px;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 4px 8px rgba(15, 23, 42, 0.08) !important;
+}
+
+.popup-content {
+  padding: 14px 16px 12px;
+}
+
+.trust-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+/* ─── Responsive Adjustments ─── */
 @media (max-width: 768px) {
-  .leaflet-container { height: calc(100vh - 96px); }
+  .leaflet-container {
+    height: calc(100vh - 80px);
+  }
 }
 
-/* Marker styling: custom yellow pin */
-.marker-pin {
-  width: 34px;
-  height: 34px;
-  background: radial-gradient(circle at 40% 35%, #fff 0%, rgba(255,255,255,0.0) 40%), linear-gradient(180deg, rgba(var(--accent),1) 0%, #ff9900 100%);
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  box-shadow: 0 6px 12px rgba(8,18,41,0.16);
-  border: 2px solid rgba(255,255,255,0.9);
-}
-
-.marker-pin::after{
-  content: '';
-  display:block;
-  width:10px;height:10px;background:rgba(8,18,41,0.9);border-radius:50%;position:relative;left:11px;top:11px;transform:rotate(45deg);
-}
-
-/* small utility */
-.rounded-lg-2 { border-radius: 14px; }
-
-/* Hide Leaflet attribution prefix for a cleaner look */
+/* ─── Hide Leaflet Attribution Prefix ─── */
 .leaflet-control-attribution a:first-child {
   display: none;
+}
+
+/* ─── Detail Sheet (Google Maps-style bottom panel) ─── */
+.detail-sheet {
+  background: rgba(var(--card), 0.98);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border-radius: 20px 20px 0 0;
+  box-shadow:
+    0 -8px 40px rgba(15, 23, 42, 0.10),
+    0 -2px 8px rgba(15, 23, 42, 0.04);
+  border-top: 1px solid rgba(var(--muted), 0.08);
+  color: rgb(var(--primary-dk));
+}
+
+/* ─── Animations ─── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.35s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
