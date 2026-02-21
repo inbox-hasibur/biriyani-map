@@ -1,15 +1,14 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 import { useMapContext } from "./MapContext";
-import { useSpots } from "@/hooks/useSpots";
-import { createCustomMarker, getTrustMeta } from "@/lib/markerIcon";
+import { useSpots, Spot } from "@/hooks/useSpots";
+import { createCustomMarker } from "@/lib/markerIcon";
 import CreateSpotModal from "./CreateSpotModal";
 import type { SpotFormData } from "./CreateSpotModal";
-import VotingUI from "./VotingUI";
 import { supabase } from "@/lib/supabaseClient";
 
 // Fix default marker icons for Next.js
@@ -20,7 +19,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Hook-based map instance capture (react-leaflet v4+)
+// Capture map instance via hook (react-leaflet v4+)
 function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
   const map = useMap();
   useEffect(() => {
@@ -31,7 +30,7 @@ function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
 }
 
 export default function Map() {
-  const { setMap } = useMapContext();
+  const { setMap, mode, setMode, selectSpot } = useMapContext();
   const [bbox, setBbox] = useState<[number, number, number, number] | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
@@ -44,6 +43,7 @@ export default function Map() {
     if (!supabase) {
       console.log("[dev mock] Create spot:", { ...data, lat, lng });
       setModalOpen(false);
+      setMode("browse");
       return;
     }
 
@@ -67,7 +67,13 @@ export default function Map() {
 
     setModalOpen(false);
     setSelectedPos(null);
+    setMode("browse");
     spotsQuery.refetch();
+  }
+
+  function handleMarkerClick(spot: Spot) {
+    // In browse mode, open the bottom detail sheet
+    selectSpot(spot);
   }
 
   return (
@@ -78,6 +84,7 @@ export default function Map() {
       zoomControl={false}
       className="h-full w-full outline-none"
     >
+      {/* Google Maps-like tiles */}
       <TileLayer
         attribution='Tiles &copy; <a href="https://www.esri.com">Esri</a>'
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
@@ -92,41 +99,28 @@ export default function Map() {
         }}
       />
 
-      <MapEvents setBbox={setBbox} setModalOpen={setModalOpen} setSelectedPos={setSelectedPos} />
+      <MapEvents
+        mode={mode}
+        setBbox={setBbox}
+        setModalOpen={setModalOpen}
+        setSelectedPos={setSelectedPos}
+      />
 
-      {/* Render spots */}
+      {/* Render spot markers */}
       {spotsQuery.data?.map((s) =>
         s?.lat && s?.lng ? (
-          <Marker key={s.id} position={[s.lat, s.lng]} icon={createCustomMarker(s.score)}>
-            <Popup>
-              <div className="popup-content">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="trust-badge"
-                    style={{ background: getTrustMeta(s.score).fill }}
-                  >
-                    {getTrustMeta(s.score).label}
-                  </span>
-                </div>
-                <h3 className="font-bold text-sm text-slate-800">{s.title}</h3>
-                {s.description && (
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{s.description}</p>
-                )}
-                {s.food_type && (
-                  <span className="inline-block mt-2 text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                    🍛 {s.food_type}
-                  </span>
-                )}
-                <p className="text-xs text-slate-400 mt-2">
-                  Score: <span className="font-bold text-slate-600">{s.score}</span>
-                </p>
-                <VotingUI spotId={s.id} initialScore={s.score} />
-              </div>
-            </Popup>
-          </Marker>
+          <Marker
+            key={s.id}
+            position={[s.lat, s.lng]}
+            icon={createCustomMarker(s.score)}
+            eventHandlers={{
+              click: () => handleMarkerClick(s),
+            }}
+          />
         ) : null
       )}
 
+      {/* Create spot modal — only visible in addSpot mode */}
       {selectedPos && (
         <CreateSpotModal
           isOpen={modalOpen}
@@ -145,10 +139,12 @@ export default function Map() {
 }
 
 function MapEvents({
+  mode,
   setBbox,
   setModalOpen,
   setSelectedPos,
 }: {
+  mode: string;
   setBbox: (b: [number, number, number, number]) => void;
   setModalOpen: (open: boolean) => void;
   setSelectedPos: (pos: [number, number] | null) => void;
@@ -163,8 +159,12 @@ function MapEvents({
       setBbox([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
     },
     click(e) {
-      setSelectedPos([e.latlng.lat, e.latlng.lng]);
-      setModalOpen(true);
+      // Only open the create-spot modal when in "addSpot" mode
+      if (mode === "addSpot") {
+        setSelectedPos([e.latlng.lat, e.latlng.lng]);
+        setModalOpen(true);
+      }
+      // In "browse" mode, clicking the map does nothing (normal navigation)
     },
   });
   return null;

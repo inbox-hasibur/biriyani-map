@@ -14,7 +14,8 @@
 }
 
 /* ─── Base Reset ─── */
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
   margin: 0;
@@ -79,6 +80,7 @@ html, body {
   box-shadow: 0 6px 18px rgba(245, 158, 11, 0.2);
   font-weight: 600;
 }
+
 .cta-yellow:hover {
   box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
   transform: translateY(-1px);
@@ -93,17 +95,21 @@ html, body {
   padding: 0 !important;
   overflow: hidden;
 }
+
 .leaflet-popup-content {
   margin: 0 !important;
   width: auto !important;
   min-width: 220px;
 }
+
 .leaflet-popup-tip {
   box-shadow: 0 4px 8px rgba(15, 23, 42, 0.08) !important;
 }
+
 .popup-content {
   padding: 14px 16px 12px;
 }
+
 .trust-badge {
   display: inline-block;
   font-size: 9px;
@@ -127,11 +133,48 @@ html, body {
   display: none;
 }
 
-/* ─── Subtle Fade-In Animation ─── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ─── Detail Sheet (Google Maps-style bottom panel) ─── */
+.detail-sheet {
+  background: rgba(var(--card), 0.98);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border-radius: 20px 20px 0 0;
+  box-shadow:
+    0 -8px 40px rgba(15, 23, 42, 0.10),
+    0 -2px 8px rgba(15, 23, 42, 0.04);
+  border-top: 1px solid rgba(var(--muted), 0.08);
+  color: rgb(var(--primary-dk));
 }
+
+/* ─── Animations ─── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-fade-up {
   animation: fadeUp 0.35s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }

@@ -1,34 +1,63 @@
 "use client";
 
-import React, { useState } from "react";
-import { MapIcon, PlusCircle, Filter, User, Menu } from "lucide-react";
+import React from "react";
+import { MapIcon, PlusCircle, Filter, User, Locate } from "lucide-react";
+import { useMapContext, AppMode } from "./MapContext";
 
 type NavId = "map" | "add" | "filter" | "profile";
 
 export default function Sidebar() {
-  const [active, setActive] = useState<NavId>("map");
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { mode, setMode, map } = useMapContext();
+
+  function handleNav(id: NavId) {
+    if (id === "add") {
+      // Toggle add-spot mode
+      setMode(mode === "addSpot" ? "browse" : "addSpot");
+    } else if (id === "map") {
+      setMode("browse");
+    }
+  }
+
+  function handleLocate() {
+    if (!map || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        map.setView([pos.coords.latitude, pos.coords.longitude], 15, { animate: true });
+      },
+      (err) => console.warn("Geolocation error:", err),
+      { enableHighAccuracy: true }
+    );
+  }
+
+  const activeId: NavId = mode === "addSpot" ? "add" : "map";
 
   return (
     <>
-      {/* ── Desktop / Tablet Dock ── */}
+      {/* ── Desktop Dock ── */}
       <div className="hidden md:fixed md:left-4 md:top-4 md:bottom-4 md:w-14 md:flex md:flex-col md:items-center z-[1000] pointer-events-none">
         <div className="sidebar-card pointer-events-auto flex flex-col items-center py-4 gap-2 h-full max-h-[90vh] px-2">
-          {/* Brand dot */}
+          {/* Brand */}
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xs font-black shadow-md mb-2">
             B
           </div>
 
-          {/* Nav icons */}
+          {/* Nav */}
           <div className="flex flex-col gap-1 w-full items-center flex-1">
-            <NavIcon id="map" icon={<MapIcon size={18} />} label="Map" active={active} setActive={setActive} />
-            <NavIcon id="add" icon={<PlusCircle size={18} />} label="Add Spot" active={active} setActive={setActive} />
-            <NavIcon id="filter" icon={<Filter size={18} />} label="Filter" active={active} setActive={setActive} />
+            <NavIcon id="map" icon={<MapIcon size={18} />} label="Map" active={activeId} onClick={handleNav} />
+            <NavIcon id="add" icon={<PlusCircle size={18} />} label="Add Spot" active={activeId} onClick={handleNav} />
+            <NavIcon id="filter" icon={<Filter size={18} />} label="Filter" active={activeId} onClick={handleNav} />
           </div>
 
-          {/* Bottom */}
+          {/* Bottom — Track Near Me + Profile */}
           <div className="mt-auto mb-1 w-full flex flex-col items-center gap-2">
-            <NavIcon id="profile" icon={<User size={16} />} label="Profile" active={active} setActive={setActive} />
+            <button
+              onClick={handleLocate}
+              className="w-full flex items-center justify-center p-2.5 rounded-xl text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
+              aria-label="Track Near Me"
+            >
+              <Locate size={18} />
+            </button>
+            <NavIcon id="profile" icon={<User size={16} />} label="Profile" active={activeId} onClick={handleNav} />
           </div>
         </div>
       </div>
@@ -37,15 +66,21 @@ export default function Sidebar() {
       <div className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
           <button
-            onClick={() => setMobileOpen((s) => !s)}
+            onClick={handleLocate}
             className="p-3 sidebar-card flex items-center justify-center rounded-xl shadow-lg"
-            aria-label="Open menu"
+            aria-label="Track Near Me"
           >
-            <Menu size={18} />
+            <Locate size={18} />
           </button>
 
-          <button className="p-3 rounded-full bg-gradient-to-b from-amber-400 to-orange-500 text-white shadow-lg flex items-center justify-center w-12 h-12">
-            <MapIcon size={18} />
+          <button
+            onClick={() => setMode(mode === "addSpot" ? "browse" : "addSpot")}
+            className={`p-3 rounded-full shadow-lg flex items-center justify-center w-12 h-12 transition-all duration-200 ${mode === "addSpot"
+                ? "bg-slate-900 text-white"
+                : "bg-gradient-to-b from-amber-400 to-orange-500 text-white"
+              }`}
+          >
+            <PlusCircle size={18} />
           </button>
 
           <button className="p-3 sidebar-card flex items-center justify-center rounded-xl shadow-lg">
@@ -61,13 +96,13 @@ function NavIcon({
   id,
   icon,
   active,
-  setActive,
+  onClick,
   label,
 }: {
   id: NavId;
   icon: React.ReactNode;
   active: NavId;
-  setActive: (id: NavId) => void;
+  onClick: (id: NavId) => void;
   label: string;
 }) {
   const isActive = active === id;
@@ -75,10 +110,10 @@ function NavIcon({
   return (
     <div className="group relative flex items-center justify-center w-full">
       <button
-        onClick={() => setActive(id)}
+        onClick={() => onClick(id)}
         className={`p-2.5 rounded-xl cursor-pointer transition-all duration-200 w-full flex items-center justify-center ${isActive
-          ? "bg-slate-900 text-white shadow-md"
-          : "text-slate-400 hover:bg-slate-900 hover:text-white"
+            ? "bg-slate-900 text-white shadow-md"
+            : "text-slate-400 hover:bg-slate-900 hover:text-white"
           }`}
         aria-label={label}
       >
