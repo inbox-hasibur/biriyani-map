@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string; initialScore?: number }) {
   const [score, setScore] = useState(initialScore);
@@ -9,29 +10,61 @@ export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string;
   const [loading, setLoading] = useState(false);
 
   async function handleVote(value: 1 | -1) {
-    if (userVote === value) {
-      // Remove vote
-      setLoading(true);
-      try {
-        // TODO: call supabase delete
-        console.log("Remove vote for spot:", spotId);
-        setUserVote(null);
-        setScore((s) => s - value);
-      } finally {
-        setLoading(false);
+    setLoading(true);
+    try {
+      if (!supabase) {
+        // Dev mock — optimistic update only
+        if (userVote === value) {
+          setScore((s) => s - value);
+          setUserVote(null);
+        } else {
+          const delta = userVote ? value - userVote : value;
+          setScore((s) => s + delta);
+          setUserVote(value);
+        }
+        return;
       }
-    } else {
-      // Add/change vote
-      setLoading(true);
-      try {
-        // TODO: call supabase upsert
-        console.log("Vote on spot:", spotId, "value:", value);
-        const delta = userVote ? (value - userVote) : value;
-        setUserVote(value);
-        setScore((s) => s + delta);
-      } finally {
-        setLoading(false);
+
+      // Get logged-in user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("Please log in to vote.");
+        return;
       }
+
+      if (userVote === value) {
+        // Remove existing vote
+        const { error } = await supabase
+          .from("spot_votes")
+          .delete()
+          .eq("spot_id", spotId)
+          .eq("user_id", user.id);
+
+        if (!error) {
+          setScore((s) => s - value);
+          setUserVote(null);
+        } else {
+          console.error("Remove vote error:", error.message);
+        }
+      } else {
+        // Upsert — insert or update if already voted with different value
+        const { error } = await supabase
+          .from("spot_votes")
+          .upsert(
+            { spot_id: spotId, user_id: user.id, value },
+            { onConflict: "spot_id,user_id" }
+          );
+
+        if (!error) {
+          const delta = userVote ? value - userVote : value;
+          setScore((s) => s + delta);
+          setUserVote(value);
+        } else {
+          console.error("Upsert vote error:", error.message);
+        }
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -40,11 +73,11 @@ export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string;
       <button
         onClick={() => handleVote(1)}
         disabled={loading}
-        className={`flex items-center gap-1 px-3 py-2 rounded-lg font-medium transition ${
-          userVote === 1
+        className={`flex items-center gap-1 px-3 py-2 rounded-lg font-medium transition ${userVote === 1
             ? "bg-green-100 text-green-700"
             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-        }`}
+          }`}
+        aria-label="Upvote"
       >
         <ThumbsUp size={16} />
         <span className="text-xs">Helpful</span>
@@ -53,17 +86,19 @@ export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string;
       <button
         onClick={() => handleVote(-1)}
         disabled={loading}
-        className={`flex items-center gap-1 px-3 py-2 rounded-lg font-medium transition ${
-          userVote === -1
+        className={`flex items-center gap-1 px-3 py-2 rounded-lg font-medium transition ${userVote === -1
             ? "bg-red-100 text-red-700"
             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-        }`}
+          }`}
+        aria-label="Downvote"
       >
         <ThumbsDown size={16} />
-        <span className="text-xs">Not Helpful</span>
+        <span className="text-xs">Fake</span>
       </button>
 
-      <div className="ml-auto text-sm font-bold text-slate-600">{score > 0 ? "+" : ""}{score}</div>
+      <div className="ml-auto text-sm font-bold text-slate-600">
+        {score > 0 ? "+" : ""}{score}
+      </div>
     </div>
   );
 }

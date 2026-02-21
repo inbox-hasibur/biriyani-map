@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
 import { QueryProvider } from "@/lib/QueryProvider";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -18,12 +17,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased flex`}>
+      <body className={`${inter.className} antialiased`}>
         <QueryProvider>
-          <Sidebar />
-          <div className="flex-1 ml-16 relative h-screen">
-            {children}
-          </div>
+          {children}
         </QueryProvider>
       </body>
     </html>
