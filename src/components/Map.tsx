@@ -3,16 +3,16 @@
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useMapContext } from "./MapContext";
 import { useSpots } from "@/hooks/useSpots";
-import { createCustomMarker } from "@/lib/markerIcon";
+import { createCustomMarker, getTrustMeta } from "@/lib/markerIcon";
 import CreateSpotModal from "./CreateSpotModal";
 import type { SpotFormData } from "./CreateSpotModal";
 import VotingUI from "./VotingUI";
 import { supabase } from "@/lib/supabaseClient";
 
-// Fix for default Leaflet marker icons in Next.js builds
+// Fix default marker icons for Next.js
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -20,7 +20,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Inner component to capture the map instance via hook (required in react-leaflet v4+)
+// Hook-based map instance capture (react-leaflet v4+)
 function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
   const map = useMap();
   useEffect(() => {
@@ -31,18 +31,17 @@ function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
 }
 
 export default function Map() {
-  const { setMap, verifiedOnly } = useMapContext();
+  const { setMap } = useMapContext();
   const [bbox, setBbox] = useState<[number, number, number, number] | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const spotsQuery = useSpots(bbox, verifiedOnly);
+  const spotsQuery = useSpots(bbox);
 
   async function handleCreateSpot(data: SpotFormData, lat: number, lng: number) {
     setSubmitError(null);
 
     if (!supabase) {
-      // Dev mode — just close (mock)
       console.log("[dev mock] Create spot:", { ...data, lat, lng });
       setModalOpen(false);
       return;
@@ -54,7 +53,6 @@ export default function Map() {
       lat,
       lng,
       food_type: data.foodType,
-      // Convert empty string to null for timestamp column
       time: data.time ? new Date(data.time).toISOString() : null,
       score: 0,
       verified: false,
@@ -69,29 +67,23 @@ export default function Map() {
 
     setModalOpen(false);
     setSelectedPos(null);
-    // Refetch spots to show the new pin immediately
     spotsQuery.refetch();
   }
 
   return (
     <MapContainer
-      center={[23.8103, 90.4125]} // Centre of Dhaka
+      center={[23.8103, 90.4125]}
       zoom={13}
       scrollWheelZoom={true}
       zoomControl={false}
       className="h-full w-full outline-none"
     >
-      {/* 
-        Google Maps-like tiles — Esri World Street Map.
-        Free to use, no API key required, very close visual match to Google Maps.
-      */}
       <TileLayer
-        attribution='Tiles &copy; <a href="https://www.esri.com">Esri</a> &mdash; Source: Esri, DeLorme, NAVTEQ, TomTom, and the GIS User Community'
+        attribution='Tiles &copy; <a href="https://www.esri.com">Esri</a>'
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
         maxZoom={19}
       />
 
-      {/* Capture map instance using the hook-based pattern (react-leaflet v4+) */}
       <MapInstanceCapture
         onMap={(m) => {
           setMap(m);
@@ -102,18 +94,33 @@ export default function Map() {
 
       <MapEvents setBbox={setBbox} setModalOpen={setModalOpen} setSelectedPos={setSelectedPos} />
 
-      {/* Render spots as markers */}
+      {/* Render spots */}
       {spotsQuery.data?.map((s) =>
         s?.lat && s?.lng ? (
-          <Marker key={s.id} position={[s.lat, s.lng]} icon={createCustomMarker(s.verified, s.score ?? 0)}>
+          <Marker key={s.id} position={[s.lat, s.lng]} icon={createCustomMarker(s.score)}>
             <Popup>
-              <div className="text-center w-52">
-                <h3 className="font-bold text-sm">{s.title}</h3>
-                {s.description && <p className="text-xs text-slate-600 mt-1">{s.description}</p>}
-                <p className="text-xs text-slate-500 mt-2">
-                  Score: {s.score ?? 0} &bull; {s.verified ? "✓ Verified" : "Pending"}
+              <div className="popup-content">
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className="trust-badge"
+                    style={{ background: getTrustMeta(s.score).fill }}
+                  >
+                    {getTrustMeta(s.score).label}
+                  </span>
+                </div>
+                <h3 className="font-bold text-sm text-slate-800">{s.title}</h3>
+                {s.description && (
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">{s.description}</p>
+                )}
+                {s.food_type && (
+                  <span className="inline-block mt-2 text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                    🍛 {s.food_type}
+                  </span>
+                )}
+                <p className="text-xs text-slate-400 mt-2">
+                  Score: <span className="font-bold text-slate-600">{s.score}</span>
                 </p>
-                <VotingUI spotId={s.id} initialScore={s.score ?? 0} />
+                <VotingUI spotId={s.id} initialScore={s.score} />
               </div>
             </Popup>
           </Marker>
