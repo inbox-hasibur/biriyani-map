@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { X, AlertCircle, MapPin } from "lucide-react";
+import { X, AlertCircle, MapPin, Check } from "lucide-react";
 import { LAYER_META, type MapLayer } from "./MapContext";
 
-/* ── Form data types per layer ── */
+/* ── Form data types ── */
 export type BiriyaniFormData = { title: string; description?: string; foodType: string; time?: string };
 export type ToiletFormData = { name: string; isPaid: boolean; hasWater: boolean; notes?: string };
 export type GoodsFormData = { productName: string; price: number; unit: string; shopName: string };
@@ -17,12 +17,12 @@ export default function CreateSpotModal({
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: LayerFormData, lat: number, lng: number) => Promise<void>;
-  lat: number;
-  lng: number;
+  lat: number; lng: number;
   error?: string | null;
   activeLayer: MapLayer;
 }) {
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const meta = LAYER_META[activeLayer];
 
   // Biriyani
@@ -52,11 +52,13 @@ export default function CreateSpotModal({
     setToiletName(""); setIsPaid(false); setHasWater(true); setToiletNotes("");
     setProductName(""); setPrice(""); setUnit("kg"); setShopName("");
     setViolenceTitle(""); setViolenceDesc(""); setIncidentType("Theft");
+    setSuccess(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setSuccess(false);
     try {
       let data: LayerFormData;
       switch (activeLayer) {
@@ -66,7 +68,8 @@ export default function CreateSpotModal({
         case "violence": data = { title: violenceTitle, description: violenceDesc, incidentType }; break;
       }
       await onSubmit(data, lat, lng);
-      resetAll();
+      setSuccess(true);
+      setTimeout(() => { resetAll(); }, 600);
     } catch (err) {
       console.error(err);
     } finally {
@@ -84,167 +87,113 @@ export default function CreateSpotModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center">
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+    <>
+      {/* ── Bottom Sheet (doesn't blur the map!) ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-[9999] md:left-[204px] animate-slide-up pointer-events-auto">
+        <div className="create-sheet mx-auto max-w-lg">
+          {/* Drag handle */}
+          <div className="flex justify-center pt-2.5 pb-1">
+            <div className="w-10 h-1 rounded-full bg-slate-300" />
+          </div>
 
-      <div className="modal-card relative w-full md:w-[420px] md:rounded-2xl rounded-t-2xl md:max-h-[85vh] max-h-[90vh] overflow-y-auto animate-slide-up">
-        {/* Header */}
-        <div className={`px-6 pt-5 pb-4 border-b border-slate-100`}>
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition"
-            aria-label="Close"
-          >
-            <X size={18} className="text-slate-400" />
-          </button>
-
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl ${meta.accentBg} flex items-center justify-center text-xl shadow-sm`}>
-              {meta.emoji}
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-800">{meta.addLabel}</h2>
-              <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium mt-0.5">
-                <MapPin size={10} />
-                <span>{lat.toFixed(4)}, {lng.toFixed(4)}</span>
+          {/* Header */}
+          <div className="px-4 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-lg ${meta.accentBg} flex items-center justify-center text-base`}>
+                {meta.emoji}
+              </div>
+              <div>
+                <span className="text-sm font-bold text-slate-800">{meta.addLabel}</span>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                  <MapPin size={9} />
+                  {lat.toFixed(4)}, {lng.toFixed(4)}
+                </div>
               </div>
             </div>
+            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition" aria-label="Close">
+              <X size={16} className="text-slate-400" />
+            </button>
           </div>
-        </div>
 
-        {/* Error */}
-        {error && (
-          <div className="mx-6 mt-4 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2.5 text-xs">
-            <AlertCircle size={14} className="mt-0.5 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
+          {/* Error */}
+          {error && (
+            <div className="mx-4 mb-2 flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs">
+              <AlertCircle size={12} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          {activeLayer === "biriyani" && (
-            <>
-              <Field label="Title" required>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Biriyani Distribution at Park" className={fieldCls(meta.accentRing)} required />
-              </Field>
-              <Field label="Description">
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Additional details..." className={`${fieldCls(meta.accentRing)} resize-none h-20`} />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Food Type" required>
-                  <select value={foodType} onChange={(e) => setFoodType(e.target.value)} className={fieldCls(meta.accentRing)}>
+          {/* Success */}
+          {success && (
+            <div className="mx-4 mb-2 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-2 text-xs">
+              <Check size={12} className="shrink-0" />
+              <span>Added successfully!</span>
+            </div>
+          )}
+
+          {/* Compact form */}
+          <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-3">
+            {activeLayer === "biriyani" && (
+              <>
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title *" className={inpCls(meta.accentRing)} required />
+                <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className={inpCls(meta.accentRing)} />
+                <div className="grid grid-cols-2 gap-2">
+                  <select value={foodType} onChange={(e) => setFoodType(e.target.value)} className={inpCls(meta.accentRing)}>
                     <option>Biriyani</option><option>Tehari</option><option>Water</option><option>Iftar Pack</option><option>Other</option>
                   </select>
-                </Field>
-                <Field label="Event Time">
-                  <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} className={fieldCls(meta.accentRing)} />
-                </Field>
-              </div>
-            </>
-          )}
-
-          {activeLayer === "toilet" && (
-            <>
-              <Field label="Toilet Name" required>
-                <input type="text" value={toiletName} onChange={(e) => setToiletName(e.target.value)} placeholder="e.g., City Center Public Toilet" className={fieldCls(meta.accentRing)} required />
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <ToggleField label="Cost" checked={isPaid} onChange={setIsPaid} activeLabel="💰 Paid" inactiveLabel="✅ Free" />
-                <ToggleField label="Water" checked={hasWater} onChange={setHasWater} activeLabel="💧 Available" inactiveLabel="🚫 None" />
-              </div>
-              <Field label="Notes">
-                <textarea value={toiletNotes} onChange={(e) => setToiletNotes(e.target.value)} placeholder="e.g., Ground floor, fairly clean..." className={`${fieldCls(meta.accentRing)} resize-none h-16`} />
-              </Field>
-            </>
-          )}
-
-          {activeLayer === "goods" && (
-            <>
-              <Field label="Product Name" required>
-                <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., Tomatoes, Onions" className={fieldCls(meta.accentRing)} required />
-              </Field>
-              <div className="grid grid-cols-5 gap-3">
-                <div className="col-span-3">
-                  <Field label="Price (৳)" required>
-                    <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="80" className={fieldCls(meta.accentRing)} required min="0" step="0.5" />
-                  </Field>
+                  <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} className={inpCls(meta.accentRing)} />
                 </div>
-                <div className="col-span-2">
-                  <Field label="Unit" required>
-                    <select value={unit} onChange={(e) => setUnit(e.target.value)} className={fieldCls(meta.accentRing)}>
-                      <option value="kg">per kg</option><option value="piece">per piece</option><option value="dozen">per dozen</option><option value="liter">per liter</option><option value="bundle">per bundle</option>
-                    </select>
-                  </Field>
+              </>
+            )}
+            {activeLayer === "toilet" && (
+              <>
+                <input type="text" value={toiletName} onChange={(e) => setToiletName(e.target.value)} placeholder="Toilet name *" className={inpCls(meta.accentRing)} required />
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setIsPaid(!isPaid)} className={`${pillCls} ${isPaid ? "bg-amber-100 border-amber-300 text-amber-700" : "bg-green-50 border-green-200 text-green-700"}`}>
+                    {isPaid ? "💰 Paid" : "✅ Free"}
+                  </button>
+                  <button type="button" onClick={() => setHasWater(!hasWater)} className={`${pillCls} ${hasWater ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-slate-100 border-slate-200 text-slate-500"}`}>
+                    {hasWater ? "💧 Water" : "🚫 No Water"}
+                  </button>
                 </div>
-              </div>
-              <Field label="Shop / Market Name" required>
-                <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="e.g., Kawran Bazar" className={fieldCls(meta.accentRing)} required />
-              </Field>
-            </>
-          )}
-
-          {activeLayer === "violence" && (
-            <>
-              <Field label="Incident Title" required>
-                <input type="text" value={violenceTitle} onChange={(e) => setViolenceTitle(e.target.value)} placeholder="e.g., Theft near ATM" className={fieldCls(meta.accentRing)} required />
-              </Field>
-              <Field label="Description">
-                <textarea value={violenceDesc} onChange={(e) => setViolenceDesc(e.target.value)} placeholder="What happened? Give details..." className={`${fieldCls(meta.accentRing)} resize-none h-20`} />
-              </Field>
-              <Field label="Incident Type" required>
-                <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className={fieldCls(meta.accentRing)}>
+                <input type="text" value={toiletNotes} onChange={(e) => setToiletNotes(e.target.value)} placeholder="Notes (optional)" className={inpCls(meta.accentRing)} />
+              </>
+            )}
+            {activeLayer === "goods" && (
+              <>
+                <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Product name *" className={inpCls(meta.accentRing)} required />
+                <div className="grid grid-cols-5 gap-2">
+                  <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="৳ Price *" className={`col-span-3 ${inpCls(meta.accentRing)}`} required min="0" step="0.5" />
+                  <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`col-span-2 ${inpCls(meta.accentRing)}`}>
+                    <option value="kg">per kg</option><option value="piece">per pc</option><option value="dozen">per dz</option><option value="liter">per L</option>
+                  </select>
+                </div>
+                <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Shop / market name *" className={inpCls(meta.accentRing)} required />
+              </>
+            )}
+            {activeLayer === "violence" && (
+              <>
+                <input type="text" value={violenceTitle} onChange={(e) => setViolenceTitle(e.target.value)} placeholder="Incident title *" className={inpCls(meta.accentRing)} required />
+                <input type="text" value={violenceDesc} onChange={(e) => setViolenceDesc(e.target.value)} placeholder="What happened? (optional)" className={inpCls(meta.accentRing)} />
+                <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className={inpCls(meta.accentRing)}>
                   <option>Theft</option><option>Assault</option><option>Harassment</option><option>Vandalism</option><option>Robbery</option><option>Eve Teasing</option><option>Other</option>
                 </select>
-              </Field>
-            </>
-          )}
+              </>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading || !isValid()}
-            className={`w-full ${meta.ctaClass} py-3.5 rounded-xl font-bold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]`}
-          >
-            {loading ? "Saving..." : `${meta.addLabel} ${meta.emoji}`}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading || !isValid()}
+              className={`w-full ${meta.ctaClass} py-3 rounded-xl font-bold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2`}
+            >
+              {loading ? "Saving..." : success ? <><Check size={16} /> Done!</> : `${meta.addLabel} ${meta.emoji}`}
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
-/* ── Reusable Components ── */
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-function ToggleField({ label, checked, onChange, activeLabel, inactiveLabel }: {
-  label: string; checked: boolean; onChange: (v: boolean) => void; activeLabel: string; inactiveLabel: string;
-}) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-slate-600 mb-1.5">{label}</label>
-      <button
-        type="button"
-        onClick={() => onChange(!checked)}
-        className={`w-full px-3 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 ${checked
-            ? "bg-blue-50 border-blue-200 text-blue-700"
-            : "bg-slate-50 border-slate-200 text-slate-600"
-          }`}
-      >
-        {checked ? activeLabel : inactiveLabel}
-      </button>
-    </div>
-  );
-}
-
-function fieldCls(ring: string) {
-  return `w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-sm bg-slate-50/50 placeholder:text-slate-400 transition`;
-}
+const inpCls = (ring: string) => `w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-sm bg-white placeholder:text-slate-400 transition`;
+const pillCls = "w-full px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 text-center";

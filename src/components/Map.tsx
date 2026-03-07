@@ -1,9 +1,9 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useMapContext, LAYER_META } from "./MapContext";
 import { useMapItems, MapItem } from "@/hooks/useMapItems";
 import { createLayerMarker } from "@/lib/markerIcon";
@@ -17,6 +17,26 @@ L.Icon.Default.mergeOptions({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+// Custom user location marker (blue pulsing dot)
+const userLocationIcon = L.divIcon({
+  html: `<div style="width:16px;height:16px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 0 10px rgba(59,130,246,0.5),0 0 20px rgba(59,130,246,0.3);"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+  className: "",
+});
+
+// Drop pin marker for add mode
+const dropPinIcon = L.divIcon({
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="54" viewBox="0 0 40 54">
+    <path d="M20 2C11.16 2 4 9.16 4 18c0 12 16 33 16 33s16-21 16-33c0-8.84-7.16-16-16-16z" fill="#1e293b" stroke="white" stroke-width="2.5"/>
+    <circle cx="20" cy="18" r="6" fill="white" opacity="0.95"/>
+    <text x="20" y="22" text-anchor="middle" font-size="10" font-weight="800" fill="#1e293b">+</text>
+  </svg>`,
+  iconSize: [40, 54],
+  iconAnchor: [20, 54],
+  className: "",
 });
 
 function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
@@ -34,60 +54,67 @@ export default function Map() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const itemsQuery = useMapItems(activeLayer, bbox);
-  const meta = LAYER_META[activeLayer];
 
   async function handleCreateItem(data: LayerFormData, lat: number, lng: number) {
     setSubmitError(null);
 
     if (!supabase) {
+      // Dev mock — simulate success with delay
       console.log(`[dev mock] Create ${activeLayer}:`, { ...data, lat, lng });
+      await new Promise((r) => setTimeout(r, 300));
       setModalOpen(false);
       setSelectedPos(null);
       setMode("browse");
+      itemsQuery.refetch();
       return;
     }
 
     let insertError: string | null = null;
 
-    switch (activeLayer) {
-      case "biriyani": {
-        const d = data as BiriyaniFormData;
-        const { error } = await supabase.from("spots").insert({
-          title: d.title, description: d.description ?? null, lat, lng,
-          food_type: d.foodType, time: d.time ? new Date(d.time).toISOString() : null,
-          score: 0, verified: false, is_visible: true,
-        });
-        if (error) insertError = error.message;
-        break;
+    try {
+      switch (activeLayer) {
+        case "biriyani": {
+          const d = data as BiriyaniFormData;
+          const { error } = await supabase.from("spots").insert({
+            title: d.title, description: d.description ?? null, lat, lng,
+            food_type: d.foodType, time: d.time ? new Date(d.time).toISOString() : null,
+            score: 0, verified: false, is_visible: true,
+          });
+          if (error) insertError = error.message;
+          break;
+        }
+        case "toilet": {
+          const d = data as ToiletFormData;
+          const { error } = await supabase.from("toilets").insert({
+            name: d.name, lat, lng, is_paid: d.isPaid, has_water: d.hasWater,
+            notes: d.notes ?? null, rating_avg: 0, rating_count: 0, score: 0, is_visible: true,
+          });
+          if (error) insertError = error.message;
+          break;
+        }
+        case "goods": {
+          const d = data as GoodsFormData;
+          const { error } = await supabase.from("goods_prices").insert({
+            product_name: d.productName, price: d.price, unit: d.unit, shop_name: d.shopName,
+            lat, lng, score: 0, is_visible: true,
+          });
+          if (error) insertError = error.message;
+          break;
+        }
+        case "violence": {
+          const d = data as ViolenceFormData;
+          const { error } = await supabase.from("violence_reports").insert({
+            title: d.title, description: d.description ?? null, incident_type: d.incidentType,
+            lat, lng, upvotes: 0, downvotes: 0, score: 0, is_visible: true,
+          });
+          if (error) insertError = error.message;
+          break;
+        }
       }
-      case "toilet": {
-        const d = data as ToiletFormData;
-        const { error } = await supabase.from("toilets").insert({
-          name: d.name, lat, lng, is_paid: d.isPaid, has_water: d.hasWater,
-          notes: d.notes ?? null, rating_avg: 0, rating_count: 0, score: 0, is_visible: true,
-        });
-        if (error) insertError = error.message;
-        break;
-      }
-      case "goods": {
-        const d = data as GoodsFormData;
-        const { error } = await supabase.from("goods_prices").insert({
-          product_name: d.productName, price: d.price, unit: d.unit, shop_name: d.shopName,
-          lat, lng, score: 0, is_visible: true,
-        });
-        if (error) insertError = error.message;
-        break;
-      }
-      case "violence": {
-        const d = data as ViolenceFormData;
-        const { error } = await supabase.from("violence_reports").insert({
-          title: d.title, description: d.description ?? null, incident_type: d.incidentType,
-          lat, lng, upvotes: 0, downvotes: 0, score: 0, is_visible: true,
-        });
-        if (error) insertError = error.message;
-        break;
-      }
+    } catch (err) {
+      insertError = err instanceof Error ? err.message : "Failed to save. Check your connection.";
     }
 
     if (insertError) {
@@ -111,9 +138,10 @@ export default function Map() {
       zoomControl={false}
       className="h-full w-full outline-none"
     >
+      {/* ── OpenStreetMap tiles — much better detail at all zoom levels ── */}
       <TileLayer
-        attribution='Tiles &copy; <a href="https://www.esri.com">Esri</a>'
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
       />
 
@@ -132,6 +160,32 @@ export default function Map() {
         setSelectedPos={setSelectedPos}
       />
 
+      <UserLocationTracker
+        onLocationUpdate={setUserLocation}
+      />
+
+      {/* User location blue dot */}
+      {userLocation && (
+        <>
+          <Circle
+            center={userLocation}
+            radius={50}
+            pathOptions={{
+              color: "#3b82f6",
+              fillColor: "#3b82f6",
+              fillOpacity: 0.1,
+              weight: 1,
+            }}
+          />
+          <Marker position={userLocation} icon={userLocationIcon} />
+        </>
+      )}
+
+      {/* Show drop pin in add mode */}
+      {selectedPos && mode === "addSpot" && (
+        <Marker position={selectedPos} icon={dropPinIcon} />
+      )}
+
       {/* Render markers for active layer */}
       {items.map((item) =>
         item?.lat != null && item?.lng != null ? (
@@ -144,20 +198,7 @@ export default function Map() {
         ) : null
       )}
 
-      {/* Empty state (rendered as map overlay) */}
-      {!itemsQuery.isLoading && items.length === 0 && (
-        <div className="leaflet-top leaflet-right" style={{ top: "70px", right: "16px" }}>
-          <div className="ui-card px-4 py-3 rounded-2xl pointer-events-auto max-w-[200px]">
-            <p className="text-xs text-slate-500 font-medium text-center">
-              No {meta.statLabel.toLowerCase()} in this area yet.
-              <br />
-              <span className={meta.accent}>Be the first to add one!</span>
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Create modal */}
+      {/* Create bottom sheet — NOT a full-screen popup */}
       {selectedPos && (
         <CreateSpotModal
           isOpen={modalOpen}
@@ -171,6 +212,39 @@ export default function Map() {
       )}
     </MapContainer>
   );
+}
+
+/* ── Track user location continuously ── */
+function UserLocationTracker({ onLocationUpdate }: { onLocationUpdate: (pos: [number, number]) => void }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    // Get initial position
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        onLocationUpdate(loc);
+      },
+      () => { }, // Silently fail initially
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+
+    // Watch for changes
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        onLocationUpdate([pos.coords.latitude, pos.coords.longitude]);
+      },
+      () => { },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return null;
 }
 
 function MapEvents({ mode, setBbox, setModalOpen, setSelectedPos }: {
