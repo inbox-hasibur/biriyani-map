@@ -1,6 +1,4 @@
 @import "tailwindcss";
-
-/* Import Leaflet CSS */
 @import "leaflet/dist/leaflet.css";
 
 /* ─── Design Tokens ─── */
@@ -9,8 +7,6 @@
   --card: 255, 255, 255;
   --primary-dk: 15, 23, 42;
   --muted: 100, 116, 139;
-  --accent-from: #fbbf24;
-  --accent-to: #f59e0b;
 }
 
 /* ─── Base Reset ─── */
@@ -26,7 +22,7 @@ body {
   font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 
-/* ─── Map Container ─── */
+/* ─── Map ─── */
 .leaflet-container {
   width: 100%;
   height: 100%;
@@ -34,55 +30,66 @@ body {
   background: rgb(var(--bg));
 }
 
-/* ─── Floating Card (shared by TopBar, Sidebar, Modals) ─── */
+/* ─── Shared Card Styles ─── */
 .ui-card {
   background: rgba(var(--card), 0.92);
   backdrop-filter: blur(16px) saturate(1.6);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  border-radius: 14px;
-  box-shadow:
-    0 4px 24px rgba(15, 23, 42, 0.06),
-    0 1px 3px rgba(15, 23, 42, 0.04);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
   border: 1px solid rgba(var(--muted), 0.08);
   color: rgb(var(--primary-dk));
 }
 
-/* ─── Sidebar Card (slightly more opaque) ─── */
 .sidebar-card {
-  background: rgba(var(--card), 0.96);
+  background: rgba(var(--card), 0.97);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  border-radius: 16px;
-  box-shadow:
-    0 8px 32px rgba(15, 23, 42, 0.08),
-    0 2px 6px rgba(15, 23, 42, 0.04);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
   border: 1px solid rgba(var(--muted), 0.06);
   color: rgb(var(--primary-dk));
 }
 
-/* ─── TopBar Card ─── */
 .topbar-card {
   background: rgba(var(--card), 0.94);
   backdrop-filter: blur(14px) saturate(1.5);
   -webkit-backdrop-filter: blur(14px) saturate(1.5);
-  border-radius: 12px;
-  box-shadow:
-    0 4px 20px rgba(15, 23, 42, 0.06),
-    0 1px 3px rgba(15, 23, 42, 0.03);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.03);
   border: 1px solid rgba(var(--muted), 0.07);
   color: rgb(var(--primary-dk));
 }
 
-/* ─── CTA Buttons (per layer) ─── */
+.modal-card {
+  background: rgba(var(--card), 0.98);
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow: 0 -8px 40px rgba(15, 23, 42, 0.12), 0 -2px 8px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(var(--muted), 0.06);
+  color: rgb(var(--primary-dk));
+}
+
+.detail-sheet {
+  background: rgba(var(--card), 0.98);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 40px rgba(15, 23, 42, 0.10), 0 -2px 8px rgba(15, 23, 42, 0.04);
+  border-top: 1px solid rgba(var(--muted), 0.08);
+  color: rgb(var(--primary-dk));
+}
+
+/* ─── CTA Buttons ─── */
 .cta-yellow {
   background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
   color: rgb(var(--primary-dk));
-  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.2);
-  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+  font-weight: 700;
 }
 
 .cta-yellow:hover {
-  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35);
   transform: translateY(-1px);
   transition: all 0.2s ease;
 }
@@ -90,12 +97,12 @@ body {
 .cta-blue {
   background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
   color: white;
-  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.2);
-  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
+  font-weight: 700;
 }
 
 .cta-blue:hover {
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
   transform: translateY(-1px);
   transition: all 0.2s ease;
 }
@@ -103,12 +110,12 @@ body {
 .cta-green {
   background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
   color: white;
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.2);
-  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+  font-weight: 700;
 }
 
 .cta-green:hover {
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
   transform: translateY(-1px);
   transition: all 0.2s ease;
 }
@@ -116,19 +123,31 @@ body {
 .cta-red {
   background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
   color: white;
-  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.2);
-  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+  font-weight: 700;
 }
 
 .cta-red:hover {
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
   transform: translateY(-1px);
   transition: all 0.2s ease;
 }
 
-/* ─── Popup Styling ─── */
+/* ─── Badges ─── */
+.trust-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: white;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* ─── Popup Override ─── */
 .leaflet-popup-content-wrapper {
-  border-radius: 14px !important;
+  border-radius: 16px !important;
   box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.04) !important;
   border: 1px solid rgba(100, 116, 139, 0.06) !important;
   padding: 0 !important;
@@ -145,22 +164,7 @@ body {
   box-shadow: 0 4px 8px rgba(15, 23, 42, 0.08) !important;
 }
 
-.popup-content {
-  padding: 14px 16px 12px;
-}
-
-.trust-badge {
-  display: inline-block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 20px;
-}
-
-/* ─── Scrollbar hide for mobile layer pills ─── */
+/* ─── Utilities ─── */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -170,29 +174,21 @@ body {
   display: none;
 }
 
-/* ─── Responsive Adjustments ─── */
+/* ─── Responsive ─── */
 @media (max-width: 768px) {
   .leaflet-container {
-    height: calc(100vh - 80px);
+    height: 100vh;
   }
 }
 
-/* ─── Hide Leaflet Attribution Prefix ─── */
+/* Hide Leaflet attribution prefix */
 .leaflet-control-attribution a:first-child {
   display: none;
 }
 
-/* ─── Detail Sheet (Google Maps-style bottom panel) ─── */
-.detail-sheet {
-  background: rgba(var(--card), 0.98);
-  backdrop-filter: blur(20px) saturate(1.8);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  border-radius: 20px 20px 0 0;
-  box-shadow:
-    0 -8px 40px rgba(15, 23, 42, 0.10),
-    0 -2px 8px rgba(15, 23, 42, 0.04);
-  border-top: 1px solid rgba(var(--muted), 0.08);
-  color: rgb(var(--primary-dk));
+/* Hide Leaflet zoom control (we use custom nav) */
+.leaflet-control-zoom {
+  display: none !important;
 }
 
 /* ─── Animations ─── */
@@ -209,7 +205,7 @@ body {
 }
 
 .animate-fade-up {
-  animation: fadeUp 0.35s ease-out;
+  animation: fadeUp 0.3s ease-out;
 }
 
 @keyframes slideUp {
@@ -225,5 +221,10 @@ body {
 }
 
 .animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Mobile safe area ─── */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 8px);
 }

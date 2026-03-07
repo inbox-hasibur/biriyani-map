@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-lea
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useState } from "react";
-import { useMapContext } from "./MapContext";
+import { useMapContext, LAYER_META } from "./MapContext";
 import { useMapItems, MapItem } from "@/hooks/useMapItems";
 import { createLayerMarker } from "@/lib/markerIcon";
 import CreateSpotModal from "./CreateSpotModal";
@@ -35,6 +35,7 @@ export default function Map() {
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const itemsQuery = useMapItems(activeLayer, bbox);
+  const meta = LAYER_META[activeLayer];
 
   async function handleCreateItem(data: LayerFormData, lat: number, lng: number) {
     setSubmitError(null);
@@ -42,6 +43,7 @@ export default function Map() {
     if (!supabase) {
       console.log(`[dev mock] Create ${activeLayer}:`, { ...data, lat, lng });
       setModalOpen(false);
+      setSelectedPos(null);
       setMode("browse");
       return;
     }
@@ -52,11 +54,8 @@ export default function Map() {
       case "biriyani": {
         const d = data as BiriyaniFormData;
         const { error } = await supabase.from("spots").insert({
-          title: d.title,
-          description: d.description ?? null,
-          lat, lng,
-          food_type: d.foodType,
-          time: d.time ? new Date(d.time).toISOString() : null,
+          title: d.title, description: d.description ?? null, lat, lng,
+          food_type: d.foodType, time: d.time ? new Date(d.time).toISOString() : null,
           score: 0, verified: false, is_visible: true,
         });
         if (error) insertError = error.message;
@@ -65,12 +64,8 @@ export default function Map() {
       case "toilet": {
         const d = data as ToiletFormData;
         const { error } = await supabase.from("toilets").insert({
-          name: d.name,
-          lat, lng,
-          is_paid: d.isPaid,
-          has_water: d.hasWater,
-          notes: d.notes ?? null,
-          rating_avg: 0, rating_count: 0, score: 0, is_visible: true,
+          name: d.name, lat, lng, is_paid: d.isPaid, has_water: d.hasWater,
+          notes: d.notes ?? null, rating_avg: 0, rating_count: 0, score: 0, is_visible: true,
         });
         if (error) insertError = error.message;
         break;
@@ -78,12 +73,8 @@ export default function Map() {
       case "goods": {
         const d = data as GoodsFormData;
         const { error } = await supabase.from("goods_prices").insert({
-          product_name: d.productName,
-          price: d.price,
-          unit: d.unit,
-          shop_name: d.shopName,
-          lat, lng,
-          score: 0, is_visible: true,
+          product_name: d.productName, price: d.price, unit: d.unit, shop_name: d.shopName,
+          lat, lng, score: 0, is_visible: true,
         });
         if (error) insertError = error.message;
         break;
@@ -91,11 +82,8 @@ export default function Map() {
       case "violence": {
         const d = data as ViolenceFormData;
         const { error } = await supabase.from("violence_reports").insert({
-          title: d.title,
-          description: d.description ?? null,
-          incident_type: d.incidentType,
-          lat, lng,
-          upvotes: 0, downvotes: 0, score: 0, is_visible: true,
+          title: d.title, description: d.description ?? null, incident_type: d.incidentType,
+          lat, lng, upvotes: 0, downvotes: 0, score: 0, is_visible: true,
         });
         if (error) insertError = error.message;
         break;
@@ -103,7 +91,6 @@ export default function Map() {
     }
 
     if (insertError) {
-      console.error("Insert error:", insertError);
       setSubmitError(insertError);
       return;
     }
@@ -114,9 +101,7 @@ export default function Map() {
     itemsQuery.refetch();
   }
 
-  function handleMarkerClick(item: MapItem) {
-    selectItem(item);
-  }
+  const items = itemsQuery.data ?? [];
 
   return (
     <MapContainer
@@ -147,28 +132,36 @@ export default function Map() {
         setSelectedPos={setSelectedPos}
       />
 
-      {/* Render items for active layer */}
-      {itemsQuery.data?.map((item) =>
-        item?.lat && item?.lng ? (
+      {/* Render markers for active layer */}
+      {items.map((item) =>
+        item?.lat != null && item?.lng != null ? (
           <Marker
-            key={item.id}
+            key={`${activeLayer}-${item.id}`}
             position={[item.lat, item.lng]}
             icon={createLayerMarker(activeLayer, item.score)}
-            eventHandlers={{
-              click: () => handleMarkerClick(item),
-            }}
+            eventHandlers={{ click: () => selectItem(item) }}
           />
         ) : null
+      )}
+
+      {/* Empty state (rendered as map overlay) */}
+      {!itemsQuery.isLoading && items.length === 0 && (
+        <div className="leaflet-top leaflet-right" style={{ top: "70px", right: "16px" }}>
+          <div className="ui-card px-4 py-3 rounded-2xl pointer-events-auto max-w-[200px]">
+            <p className="text-xs text-slate-500 font-medium text-center">
+              No {meta.statLabel.toLowerCase()} in this area yet.
+              <br />
+              <span className={meta.accent}>Be the first to add one!</span>
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Create modal */}
       {selectedPos && (
         <CreateSpotModal
           isOpen={modalOpen}
-          onClose={() => {
-            setModalOpen(false);
-            setSelectedPos(null);
-          }}
+          onClose={() => { setModalOpen(false); setSelectedPos(null); }}
           onSubmit={handleCreateItem}
           lat={selectedPos[0]}
           lng={selectedPos[1]}
@@ -180,12 +173,7 @@ export default function Map() {
   );
 }
 
-function MapEvents({
-  mode,
-  setBbox,
-  setModalOpen,
-  setSelectedPos,
-}: {
+function MapEvents({ mode, setBbox, setModalOpen, setSelectedPos }: {
   mode: string;
   setBbox: (b: [number, number, number, number]) => void;
   setModalOpen: (open: boolean) => void;

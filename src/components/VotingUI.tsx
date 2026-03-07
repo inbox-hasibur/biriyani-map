@@ -7,8 +7,8 @@ import type { MapLayer } from "@/components/MapContext";
 
 const VOTE_LABELS: Record<MapLayer, { up: string; down: string }> = {
   biriyani: { up: "Helpful", down: "Fake" },
-  toilet: { up: "Accurate", down: "Inaccurate" },
-  goods: { up: "Correct Price", down: "Wrong Price" },
+  toilet: { up: "Accurate", down: "Wrong" },
+  goods: { up: "Correct", down: "Wrong" },
   violence: { up: "Confirm", down: "Doubt" },
 };
 
@@ -19,21 +19,15 @@ const TABLE_MAP: Record<MapLayer, string> = {
   violence: "violence_votes",
 };
 
-const ID_FIELD_MAP: Record<MapLayer, string> = {
+const ID_FIELD: Record<MapLayer, string> = {
   biriyani: "spot_id",
   toilet: "toilet_id",
   goods: "goods_id",
   violence: "report_id",
 };
 
-export default function VotingUI({
-  spotId,
-  initialScore = 0,
-  layer = "biriyani",
-}: {
-  spotId: string;
-  initialScore?: number;
-  layer?: MapLayer;
+export default function VotingUI({ spotId, initialScore = 0, layer = "biriyani" }: {
+  spotId: string; initialScore?: number; layer?: MapLayer;
 }) {
   const [score, setScore] = useState(initialScore);
   const [userVote, setUserVote] = useState<1 | -1 | null>(null);
@@ -44,54 +38,24 @@ export default function VotingUI({
     setLoading(true);
     try {
       if (!supabase) {
-        if (userVote === value) {
-          setScore((s) => s - value);
-          setUserVote(null);
-        } else {
-          const delta = userVote ? value - userVote : value;
-          setScore((s) => s + delta);
-          setUserVote(value);
-        }
+        // Dev mock
+        if (userVote === value) { setScore((s) => s - value); setUserVote(null); }
+        else { setScore((s) => s + (userVote ? value - userVote : value)); setUserVote(value); }
         return;
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert("Please log in to vote.");
-        return;
-      }
+      if (!user) { alert("Please log in to vote."); return; }
 
       const table = TABLE_MAP[layer];
-      const idField = ID_FIELD_MAP[layer];
+      const field = ID_FIELD[layer];
 
       if (userVote === value) {
-        const { error } = await supabase
-          .from(table)
-          .delete()
-          .eq(idField, spotId)
-          .eq("user_id", user.id);
-
-        if (!error) {
-          setScore((s) => s - value);
-          setUserVote(null);
-        } else {
-          console.error("Remove vote error:", error.message);
-        }
+        const { error } = await supabase.from(table).delete().eq(field, spotId).eq("user_id", user.id);
+        if (!error) { setScore((s) => s - value); setUserVote(null); }
       } else {
-        const { error } = await supabase
-          .from(table)
-          .upsert(
-            { [idField]: spotId, user_id: user.id, value },
-            { onConflict: `${idField},user_id` }
-          );
-
-        if (!error) {
-          const delta = userVote ? value - userVote : value;
-          setScore((s) => s + delta);
-          setUserVote(value);
-        } else {
-          console.error("Upsert vote error:", error.message);
-        }
+        const { error } = await supabase.from(table).upsert({ [field]: spotId, user_id: user.id, value }, { onConflict: `${field},user_id` });
+        if (!error) { setScore((s) => s + (userVote ? value - userVote : value)); setUserVote(value); }
       }
     } finally {
       setLoading(false);
@@ -99,35 +63,38 @@ export default function VotingUI({
   }
 
   return (
-    <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate-200">
+    <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
       <button
         onClick={() => handleVote(1)}
         disabled={loading}
-        className={`flex items-center gap-1 px-3 py-2 rounded-lg font-medium transition ${userVote === 1
-            ? "bg-green-100 text-green-700"
-            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-semibold text-xs transition-all duration-200 active:scale-95 ${userVote === 1
+            ? "bg-green-100 text-green-700 shadow-sm"
+            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
           }`}
         aria-label="Upvote"
       >
-        <ThumbsUp size={16} />
-        <span className="text-xs">{labels.up}</span>
+        <ThumbsUp size={14} />
+        {labels.up}
       </button>
 
       <button
         onClick={() => handleVote(-1)}
         disabled={loading}
-        className={`flex items-center gap-1 px-3 py-2 rounded-lg font-medium transition ${userVote === -1
-            ? "bg-red-100 text-red-700"
-            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-semibold text-xs transition-all duration-200 active:scale-95 ${userVote === -1
+            ? "bg-red-100 text-red-700 shadow-sm"
+            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
           }`}
         aria-label="Downvote"
       >
-        <ThumbsDown size={16} />
-        <span className="text-xs">{labels.down}</span>
+        <ThumbsDown size={14} />
+        {labels.down}
       </button>
 
-      <div className="ml-auto text-sm font-bold text-slate-600">
-        {score > 0 ? "+" : ""}{score}
+      <div className="ml-auto flex items-center gap-1.5">
+        <span className={`text-sm font-bold ${score > 0 ? "text-green-600" : score < 0 ? "text-red-500" : "text-slate-400"}`}>
+          {score > 0 ? "+" : ""}{score}
+        </span>
+        <span className="text-[10px] text-slate-400 font-medium">score</span>
       </div>
     </div>
   );

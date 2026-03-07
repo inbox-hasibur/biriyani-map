@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, AlertCircle } from "lucide-react";
-import type { MapLayer } from "./MapContext";
+import { X, AlertCircle, MapPin } from "lucide-react";
+import { LAYER_META, type MapLayer } from "./MapContext";
 
 /* ── Form data types per layer ── */
 export type BiriyaniFormData = { title: string; description?: string; foodType: string; time?: string };
@@ -11,21 +11,8 @@ export type GoodsFormData = { productName: string; price: number; unit: string; 
 export type ViolenceFormData = { title: string; description?: string; incidentType: string };
 export type LayerFormData = BiriyaniFormData | ToiletFormData | GoodsFormData | ViolenceFormData;
 
-const LAYER_THEMES: Record<MapLayer, { title: string; accent: string; ring: string; cta: string; emoji: string }> = {
-  biriyani: { title: "Drop a Spot", accent: "text-amber-700", ring: "focus:ring-amber-400", cta: "cta-yellow", emoji: "🍛" },
-  toilet: { title: "Add Toilet", accent: "text-blue-700", ring: "focus:ring-blue-400", cta: "cta-blue", emoji: "🚻" },
-  goods: { title: "Add Price", accent: "text-emerald-700", ring: "focus:ring-emerald-400", cta: "cta-green", emoji: "💰" },
-  violence: { title: "Report Incident", accent: "text-red-700", ring: "focus:ring-red-400", cta: "cta-red", emoji: "⚠️" },
-};
-
 export default function CreateSpotModal({
-  isOpen,
-  onClose,
-  onSubmit,
-  lat,
-  lng,
-  error,
-  activeLayer,
+  isOpen, onClose, onSubmit, lat, lng, error, activeLayer,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -36,33 +23,29 @@ export default function CreateSpotModal({
   activeLayer: MapLayer;
 }) {
   const [loading, setLoading] = useState(false);
+  const meta = LAYER_META[activeLayer];
 
-  // Biriyani fields
+  // Biriyani
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [foodType, setFoodType] = useState("Biriyani");
   const [time, setTime] = useState("");
-
-  // Toilet fields
+  // Toilet
   const [toiletName, setToiletName] = useState("");
   const [isPaid, setIsPaid] = useState(false);
   const [hasWater, setHasWater] = useState(true);
   const [toiletNotes, setToiletNotes] = useState("");
-
-  // Goods fields
+  // Goods
   const [productName, setProductName] = useState("");
   const [price, setPrice] = useState("");
   const [unit, setUnit] = useState("kg");
   const [shopName, setShopName] = useState("");
-
-  // Violence fields
+  // Violence
   const [violenceTitle, setViolenceTitle] = useState("");
   const [violenceDesc, setViolenceDesc] = useState("");
   const [incidentType, setIncidentType] = useState("Theft");
 
   if (!isOpen) return null;
-
-  const theme = LAYER_THEMES[activeLayer];
 
   function resetAll() {
     setTitle(""); setDescription(""); setFoodType("Biriyani"); setTime("");
@@ -77,23 +60,15 @@ export default function CreateSpotModal({
     try {
       let data: LayerFormData;
       switch (activeLayer) {
-        case "biriyani":
-          data = { title, description, foodType, time } as BiriyaniFormData;
-          break;
-        case "toilet":
-          data = { name: toiletName, isPaid, hasWater, notes: toiletNotes } as ToiletFormData;
-          break;
-        case "goods":
-          data = { productName, price: parseFloat(price) || 0, unit, shopName } as GoodsFormData;
-          break;
-        case "violence":
-          data = { title: violenceTitle, description: violenceDesc, incidentType } as ViolenceFormData;
-          break;
+        case "biriyani": data = { title, description, foodType, time }; break;
+        case "toilet": data = { name: toiletName, isPaid, hasWater, notes: toiletNotes }; break;
+        case "goods": data = { productName, price: parseFloat(price) || 0, unit, shopName }; break;
+        case "violence": data = { title: violenceTitle, description: violenceDesc, incidentType }; break;
       }
       await onSubmit(data, lat, lng);
       resetAll();
     } catch (err) {
-      console.error("Submit error:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -110,41 +85,126 @@ export default function CreateSpotModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end md:items-center justify-center">
-      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="ui-card rounded-t-2xl md:rounded-2xl w-full md:w-96 p-6 relative shadow-2xl max-h-[85vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-lg transition"
-          aria-label="Close"
-        >
-          <X size={20} />
-        </button>
+      <div className="modal-card relative w-full md:w-[420px] md:rounded-2xl rounded-t-2xl md:max-h-[85vh] max-h-[90vh] overflow-y-auto animate-slide-up">
+        {/* Header */}
+        <div className={`px-6 pt-5 pb-4 border-b border-slate-100`}>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-xl transition"
+            aria-label="Close"
+          >
+            <X size={18} className="text-slate-400" />
+          </button>
 
-        <h2 className="text-lg font-bold mb-1">{theme.title} {theme.emoji}</h2>
-        <p className="text-xs text-slate-500 mb-4">
-          Location: {lat.toFixed(4)}, {lng.toFixed(4)}
-        </p>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl ${meta.accentBg} flex items-center justify-center text-xl shadow-sm`}>
+              {meta.emoji}
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800">{meta.addLabel}</h2>
+              <div className="flex items-center gap-1 text-[11px] text-slate-400 font-medium mt-0.5">
+                <MapPin size={10} />
+                <span>{lat.toFixed(4)}, {lng.toFixed(4)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
+        {/* Error */}
         {error && (
-          <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 mb-4 text-xs">
+          <div className="mx-6 mt-4 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-3 py-2.5 text-xs">
             <AlertCircle size={14} className="mt-0.5 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {activeLayer === "biriyani" && <BiriyaniFields title={title} setTitle={setTitle} description={description} setDescription={setDescription} foodType={foodType} setFoodType={setFoodType} time={time} setTime={setTime} ring={theme.ring} />}
-          {activeLayer === "toilet" && <ToiletFields name={toiletName} setName={setToiletName} isPaid={isPaid} setIsPaid={setIsPaid} hasWater={hasWater} setHasWater={setHasWater} notes={toiletNotes} setNotes={setToiletNotes} ring={theme.ring} />}
-          {activeLayer === "goods" && <GoodsFields productName={productName} setProductName={setProductName} price={price} setPrice={setPrice} unit={unit} setUnit={setUnit} shopName={shopName} setShopName={setShopName} ring={theme.ring} />}
-          {activeLayer === "violence" && <ViolenceFields title={violenceTitle} setTitle={setViolenceTitle} description={violenceDesc} setDescription={setViolenceDesc} incidentType={incidentType} setIncidentType={setIncidentType} ring={theme.ring} />}
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {activeLayer === "biriyani" && (
+            <>
+              <Field label="Title" required>
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Biriyani Distribution at Park" className={fieldCls(meta.accentRing)} required />
+              </Field>
+              <Field label="Description">
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Additional details..." className={`${fieldCls(meta.accentRing)} resize-none h-20`} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Food Type" required>
+                  <select value={foodType} onChange={(e) => setFoodType(e.target.value)} className={fieldCls(meta.accentRing)}>
+                    <option>Biriyani</option><option>Tehari</option><option>Water</option><option>Iftar Pack</option><option>Other</option>
+                  </select>
+                </Field>
+                <Field label="Event Time">
+                  <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} className={fieldCls(meta.accentRing)} />
+                </Field>
+              </div>
+            </>
+          )}
+
+          {activeLayer === "toilet" && (
+            <>
+              <Field label="Toilet Name" required>
+                <input type="text" value={toiletName} onChange={(e) => setToiletName(e.target.value)} placeholder="e.g., City Center Public Toilet" className={fieldCls(meta.accentRing)} required />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <ToggleField label="Cost" checked={isPaid} onChange={setIsPaid} activeLabel="💰 Paid" inactiveLabel="✅ Free" />
+                <ToggleField label="Water" checked={hasWater} onChange={setHasWater} activeLabel="💧 Available" inactiveLabel="🚫 None" />
+              </div>
+              <Field label="Notes">
+                <textarea value={toiletNotes} onChange={(e) => setToiletNotes(e.target.value)} placeholder="e.g., Ground floor, fairly clean..." className={`${fieldCls(meta.accentRing)} resize-none h-16`} />
+              </Field>
+            </>
+          )}
+
+          {activeLayer === "goods" && (
+            <>
+              <Field label="Product Name" required>
+                <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., Tomatoes, Onions" className={fieldCls(meta.accentRing)} required />
+              </Field>
+              <div className="grid grid-cols-5 gap-3">
+                <div className="col-span-3">
+                  <Field label="Price (৳)" required>
+                    <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="80" className={fieldCls(meta.accentRing)} required min="0" step="0.5" />
+                  </Field>
+                </div>
+                <div className="col-span-2">
+                  <Field label="Unit" required>
+                    <select value={unit} onChange={(e) => setUnit(e.target.value)} className={fieldCls(meta.accentRing)}>
+                      <option value="kg">per kg</option><option value="piece">per piece</option><option value="dozen">per dozen</option><option value="liter">per liter</option><option value="bundle">per bundle</option>
+                    </select>
+                  </Field>
+                </div>
+              </div>
+              <Field label="Shop / Market Name" required>
+                <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="e.g., Kawran Bazar" className={fieldCls(meta.accentRing)} required />
+              </Field>
+            </>
+          )}
+
+          {activeLayer === "violence" && (
+            <>
+              <Field label="Incident Title" required>
+                <input type="text" value={violenceTitle} onChange={(e) => setViolenceTitle(e.target.value)} placeholder="e.g., Theft near ATM" className={fieldCls(meta.accentRing)} required />
+              </Field>
+              <Field label="Description">
+                <textarea value={violenceDesc} onChange={(e) => setViolenceDesc(e.target.value)} placeholder="What happened? Give details..." className={`${fieldCls(meta.accentRing)} resize-none h-20`} />
+              </Field>
+              <Field label="Incident Type" required>
+                <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className={fieldCls(meta.accentRing)}>
+                  <option>Theft</option><option>Assault</option><option>Harassment</option><option>Vandalism</option><option>Robbery</option><option>Eve Teasing</option><option>Other</option>
+                </select>
+              </Field>
+            </>
+          )}
 
           <button
             type="submit"
             disabled={loading || !isValid()}
-            className={`w-full ${theme.cta} py-3 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`w-full ${meta.ctaClass} py-3.5 rounded-xl font-bold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]`}
           >
-            {loading ? "Saving..." : `${theme.title} ${theme.emoji}`}
+            {loading ? "Saving..." : `${meta.addLabel} ${meta.emoji}`}
           </button>
         </form>
       </div>
@@ -152,121 +212,39 @@ export default function CreateSpotModal({
   );
 }
 
-/* ── Layer-Specific Form Fields ── */
+/* ── Reusable Components ── */
 
-const inputCls = (ring: string) => `w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 ${ring} text-sm`;
-
-function BiriyaniFields({ title, setTitle, description, setDescription, foodType, setFoodType, time, setTime, ring }: { title: string; setTitle: (v: string) => void; description: string; setDescription: (v: string) => void; foodType: string; setFoodType: (v: string) => void; time: string; setTime: (v: string) => void; ring: string }) {
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
-    <>
-      <div>
-        <label className="block text-sm font-medium mb-1">Title *</label>
-        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Biriyani Distribution at Park" className={inputCls(ring)} required />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Description</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Additional details..." className={`${inputCls(ring)} resize-none h-20`} />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Food Type *</label>
-        <select value={foodType} onChange={(e) => setFoodType(e.target.value)} className={inputCls(ring)}>
-          <option>Biriyani</option>
-          <option>Tehari</option>
-          <option>Water</option>
-          <option>Iftar Pack</option>
-          <option>Other</option>
-        </select>
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Event Time</label>
-        <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} className={inputCls(ring)} />
-      </div>
-    </>
+    <div>
+      <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
   );
 }
 
-function ToiletFields({ name, setName, isPaid, setIsPaid, hasWater, setHasWater, notes, setNotes, ring }: { name: string; setName: (v: string) => void; isPaid: boolean; setIsPaid: (v: boolean) => void; hasWater: boolean; setHasWater: (v: boolean) => void; notes: string; setNotes: (v: string) => void; ring: string }) {
+function ToggleField({ label, checked, onChange, activeLabel, inactiveLabel }: {
+  label: string; checked: boolean; onChange: (v: boolean) => void; activeLabel: string; inactiveLabel: string;
+}) {
   return (
-    <>
-      <div>
-        <label className="block text-sm font-medium mb-1">Name *</label>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., City Center Public Toilet" className={inputCls(ring)} required />
-      </div>
-      <div className="flex gap-4">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <div className={`relative w-11 h-6 rounded-full transition-colors ${isPaid ? "bg-blue-500" : "bg-slate-300"}`} onClick={() => setIsPaid(!isPaid)}>
-            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isPaid ? "translate-x-5" : "translate-x-0.5"}`} />
-          </div>
-          <span className="text-sm font-medium">{isPaid ? "Paid 💰" : "Free ✅"}</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <div className={`relative w-11 h-6 rounded-full transition-colors ${hasWater ? "bg-blue-500" : "bg-slate-300"}`} onClick={() => setHasWater(!hasWater)}>
-            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${hasWater ? "translate-x-5" : "translate-x-0.5"}`} />
-          </div>
-          <span className="text-sm font-medium">{hasWater ? "Water 💧" : "No Water"}</span>
-        </label>
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Notes</label>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g., Ground floor, clean..." className={`${inputCls(ring)} resize-none h-20`} />
-      </div>
-    </>
+    <div>
+      <label className="block text-xs font-semibold text-slate-600 mb-1.5">{label}</label>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`w-full px-3 py-2.5 rounded-xl text-sm font-medium border transition-all duration-200 ${checked
+            ? "bg-blue-50 border-blue-200 text-blue-700"
+            : "bg-slate-50 border-slate-200 text-slate-600"
+          }`}
+      >
+        {checked ? activeLabel : inactiveLabel}
+      </button>
+    </div>
   );
 }
 
-function GoodsFields({ productName, setProductName, price, setPrice, unit, setUnit, shopName, setShopName, ring }: { productName: string; setProductName: (v: string) => void; price: string; setPrice: (v: string) => void; unit: string; setUnit: (v: string) => void; shopName: string; setShopName: (v: string) => void; ring: string }) {
-  return (
-    <>
-      <div>
-        <label className="block text-sm font-medium mb-1">Product Name *</label>
-        <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g., Tomatoes, Onions" className={inputCls(ring)} required />
-      </div>
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className="block text-sm font-medium mb-1">Price (৳) *</label>
-          <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="80" className={inputCls(ring)} required min="0" step="0.01" />
-        </div>
-        <div className="w-28">
-          <label className="block text-sm font-medium mb-1">Unit *</label>
-          <select value={unit} onChange={(e) => setUnit(e.target.value)} className={inputCls(ring)}>
-            <option value="kg">per kg</option>
-            <option value="piece">per piece</option>
-            <option value="dozen">per dozen</option>
-            <option value="liter">per liter</option>
-            <option value="bundle">per bundle</option>
-          </select>
-        </div>
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Shop Name *</label>
-        <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="e.g., Kawran Bazar" className={inputCls(ring)} required />
-      </div>
-    </>
-  );
-}
-
-function ViolenceFields({ title, setTitle, description, setDescription, incidentType, setIncidentType, ring }: { title: string; setTitle: (v: string) => void; description: string; setDescription: (v: string) => void; incidentType: string; setIncidentType: (v: string) => void; ring: string }) {
-  return (
-    <>
-      <div>
-        <label className="block text-sm font-medium mb-1">Incident Title *</label>
-        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Theft near ATM" className={inputCls(ring)} required />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Description</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What happened?" className={`${inputCls(ring)} resize-none h-20`} />
-      </div>
-      <div>
-        <label className="block text-sm font-medium mb-1">Incident Type *</label>
-        <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className={inputCls(ring)}>
-          <option>Theft</option>
-          <option>Assault</option>
-          <option>Harassment</option>
-          <option>Vandalism</option>
-          <option>Robbery</option>
-          <option>Other</option>
-        </select>
-      </div>
-    </>
-  );
+function fieldCls(ring: string) {
+  return `w-full px-3.5 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-sm bg-slate-50/50 placeholder:text-slate-400 transition`;
 }

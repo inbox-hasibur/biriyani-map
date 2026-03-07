@@ -2,77 +2,26 @@
 
 import { useState } from "react";
 import { Search, MapPin, X } from "lucide-react";
-import { useMapContext, MapLayer } from "./MapContext";
+import { useMapContext, LAYER_META } from "./MapContext";
 import { useMapItems } from "@/hooks/useMapItems";
-
-const LAYER_CONFIG: Record<MapLayer, { placeholder: string; bannerText: string; bannerBg: string; bannerDot: string; bannerText2: string; statLabel: string }> = {
-  biriyani: {
-    placeholder: "Search area (e.g. Uttara, Mirpur)",
-    bannerText: "Tap anywhere on the map to drop a biriyani spot",
-    bannerBg: "bg-amber-50/90 border-amber-200/50",
-    bannerDot: "bg-amber-400",
-    bannerText2: "text-amber-800",
-    statLabel: "Spots",
-  },
-  toilet: {
-    placeholder: "Search area for toilets...",
-    bannerText: "Tap anywhere on the map to add a toilet",
-    bannerBg: "bg-blue-50/90 border-blue-200/50",
-    bannerDot: "bg-blue-400",
-    bannerText2: "text-blue-800",
-    statLabel: "Toilets",
-  },
-  goods: {
-    placeholder: "Search area for prices...",
-    bannerText: "Tap anywhere on the map to add a price report",
-    bannerBg: "bg-emerald-50/90 border-emerald-200/50",
-    bannerDot: "bg-emerald-400",
-    bannerText2: "text-emerald-800",
-    statLabel: "Prices",
-  },
-  violence: {
-    placeholder: "Search area for reports...",
-    bannerText: "Tap anywhere on the map to report an incident",
-    bannerBg: "bg-red-50/90 border-red-200/50",
-    bannerDot: "bg-red-400",
-    bannerText2: "text-red-800",
-    statLabel: "Reports",
-  },
-};
-
-const LAYER_ACCENT: Record<MapLayer, string> = {
-  biriyani: "text-amber-500",
-  toilet: "text-blue-500",
-  goods: "text-emerald-500",
-  violence: "text-red-500",
-};
-
-const LAYER_DOT: Record<MapLayer, string> = {
-  biriyani: "bg-amber-400",
-  toilet: "bg-blue-400",
-  goods: "bg-emerald-400",
-  violence: "bg-red-400",
-};
 
 export default function TopBar() {
   const [q, setQ] = useState("");
   const { map, mode, setMode, activeLayer } = useMapContext();
-  const config = LAYER_CONFIG[activeLayer];
+  const meta = LAYER_META[activeLayer];
 
-  // Live counts
   const allItemsQuery = useMapItems(activeLayer, undefined);
   const items = allItemsQuery.data ?? [];
   const totalCount = items.length;
-  const highScoreCount = items.filter((s) => s.score >= 10).length;
-  const midScoreCount = items.filter((s) => s.score >= 5 && s.score < 10).length;
+  const highCount = items.filter((s) => s.score >= 10).length;
+  const midCount = items.filter((s) => s.score >= 5 && s.score < 10).length;
 
   async function handleSearch(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!q || !map) return;
-
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
-      const res = await fetch(url, { headers: { "User-Agent": "UniversalMaps/1.0" } });
+      const res = await fetch(url, { headers: { "User-Agent": "UniMap/1.0" } });
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         map.setView([parseFloat(data[0].lat), parseFloat(data[0].lon)], 15, { animate: true });
@@ -92,66 +41,101 @@ export default function TopBar() {
   }
 
   return (
-    <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2 pointer-events-none"
-      style={{ left: "calc(16px + 56px + 16px)" }}
-    >
-      {/* Main row */}
-      <div className="flex items-center gap-3">
-        {/* Search bar */}
-        <form
-          onSubmit={handleSearch}
-          className="topbar-card pointer-events-auto flex items-center px-4 py-2.5 gap-3 w-full max-w-xl rounded-xl"
-        >
-          <Search size={16} className="text-slate-400 shrink-0" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            type="text"
-            placeholder={config.placeholder}
-            className="bg-transparent outline-none text-slate-700 text-sm font-medium w-full placeholder:text-slate-400"
-          />
-          <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
-          <button type="button" onClick={handleLocate} aria-label="Locate me" className="shrink-0">
-            <MapPin size={16} className={`${LAYER_ACCENT[activeLayer]} cursor-pointer hover:scale-110 transition`} />
-          </button>
-        </form>
+    <>
+      {/* ── Desktop TopBar ── */}
+      <div className="hidden md:flex absolute top-4 right-4 z-[1000] flex-col gap-2 pointer-events-none"
+        style={{ left: "204px" }}
+      >
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <form
+            onSubmit={handleSearch}
+            className="topbar-card pointer-events-auto flex items-center px-4 py-2.5 gap-3 w-full max-w-xl rounded-2xl"
+          >
+            <Search size={16} className="text-slate-400 shrink-0" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              type="text"
+              placeholder={meta.searchHint}
+              className="bg-transparent outline-none text-slate-700 text-sm font-medium w-full placeholder:text-slate-400"
+            />
+            <div className="h-5 w-px bg-slate-200 mx-1" />
+            <button type="button" onClick={handleLocate} aria-label="Locate me" className="shrink-0">
+              <MapPin size={16} className={`${meta.accent} cursor-pointer hover:scale-110 transition`} />
+            </button>
+          </form>
 
-        {/* Live status badge */}
-        <div className="ml-auto hidden md:flex pointer-events-auto">
-          <div className="topbar-card bg-slate-900/95 text-white px-4 py-2 rounded-xl flex items-center gap-4">
-            <div className="flex flex-col leading-none">
-              <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">{config.statLabel}</span>
-              <span className="text-sm font-bold">{allItemsQuery.isLoading ? "…" : totalCount}</span>
-            </div>
-            <div className="w-px h-6 bg-slate-700" />
-            <div className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${LAYER_DOT[activeLayer]} opacity-70`} />
-              <span className="text-sm font-bold">{midScoreCount}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${LAYER_DOT[activeLayer]} animate-pulse`} />
-              <span className="text-sm font-bold">{highScoreCount}</span>
+          {/* Stats Badge */}
+          <div className="ml-auto pointer-events-auto">
+            <div className="topbar-card bg-slate-900/95 text-white px-4 py-2 rounded-2xl flex items-center gap-4">
+              <div className="flex flex-col leading-none">
+                <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">{meta.statLabel}</span>
+                <span className="text-sm font-bold">{allItemsQuery.isLoading ? "…" : totalCount}</span>
+              </div>
+              <div className="w-px h-6 bg-slate-700" />
+              <div className="flex items-center gap-1.5" title="Medium (score 5-9)">
+                <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                <span className="text-sm font-bold">{midCount}</span>
+              </div>
+              <div className="flex items-center gap-1.5" title="Confirmed (score 10+)">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-sm font-bold">{highCount}</span>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Add Banner */}
+        {mode === "addSpot" && (
+          <div className={`topbar-card pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl ${meta.accentLight} animate-fade-up`}>
+            <div className={`w-2 h-2 rounded-full ${meta.accentBg} animate-pulse shrink-0`} />
+            <p className="text-sm font-medium flex-1">{meta.addBanner}</p>
+            <button onClick={() => setMode("browse")} className="p-1 hover:bg-white/50 rounded-lg transition shrink-0" aria-label="Cancel">
+              <X size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Add Mode Banner */}
-      {mode === "addSpot" && (
-        <div className={`topbar-card pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl ${config.bannerBg} animate-fade-up`}>
-          <div className={`w-2 h-2 rounded-full ${config.bannerDot} animate-pulse shrink-0`} />
-          <p className={`text-sm font-medium ${config.bannerText2} flex-1`}>
-            {config.bannerText}
-          </p>
-          <button
-            onClick={() => setMode("browse")}
-            className="p-1 hover:bg-white/50 rounded-lg transition shrink-0"
-            aria-label="Cancel"
+      {/* ── Mobile TopBar ── */}
+      <div className="md:hidden absolute top-3 left-3 right-3 z-[1000] pointer-events-none">
+        <div className="flex items-center gap-2">
+          <form
+            onSubmit={handleSearch}
+            className="topbar-card pointer-events-auto flex items-center px-3.5 py-2.5 gap-2.5 flex-1 rounded-2xl"
           >
-            <X size={16} className={config.bannerText2} />
-          </button>
+            <Search size={16} className="text-slate-400 shrink-0" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              type="text"
+              placeholder={meta.searchHint}
+              className="bg-transparent outline-none text-slate-700 text-sm font-medium w-full placeholder:text-slate-400 min-w-0"
+            />
+            <button type="button" onClick={handleLocate} aria-label="Locate me" className="shrink-0">
+              <MapPin size={16} className={`${meta.accent}`} />
+            </button>
+          </form>
+
+          {/* Compact Stats */}
+          <div className="topbar-card pointer-events-auto bg-slate-900/95 text-white px-3 py-2.5 rounded-2xl flex items-center gap-2 shrink-0">
+            <span className="text-xs font-bold">{allItemsQuery.isLoading ? "…" : totalCount}</span>
+            <span className="text-[9px] text-slate-400 font-semibold">{meta.emoji}</span>
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* Mobile Add Banner */}
+        {mode === "addSpot" && (
+          <div className={`topbar-card pointer-events-auto flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl mt-2 ${meta.accentLight} animate-fade-up`}>
+            <div className={`w-2 h-2 rounded-full ${meta.accentBg} animate-pulse shrink-0`} />
+            <p className="text-xs font-medium flex-1">{meta.addBanner}</p>
+            <button onClick={() => setMode("browse")} className="p-0.5 rounded-lg transition shrink-0" aria-label="Cancel">
+              <X size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
