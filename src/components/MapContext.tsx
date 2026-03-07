@@ -6,6 +6,7 @@ import type { BiriyaniSpot, ToiletSpot, GoodsPrice, ViolenceReport } from "@/hoo
 
 export type MapLayer = "biriyani" | "toilet" | "goods" | "violence";
 export type AppMode = "browse" | "addSpot";
+export type TileStyle = "default" | "satellite" | "dark" | "terrain";
 export type MapItem = BiriyaniSpot | ToiletSpot | GoodsPrice | ViolenceReport;
 
 /* ── Layer metadata (single source of truth) ── */
@@ -87,6 +88,8 @@ type MapContextValue = {
   setActiveLayer: (l: MapLayer) => void;
   selectedItem: MapItem | null;
   selectItem: (s: MapItem | null) => void;
+  tileStyle: TileStyle;
+  setTileStyle: (s: TileStyle) => void;
 };
 
 const MapContext = createContext<MapContextValue | undefined>(undefined);
@@ -96,6 +99,7 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeRaw] = useState<AppMode>("browse");
   const [activeLayer, setActiveLayerRaw] = useState<MapLayer>("biriyani");
   const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
+  const [tileStyle, setTileStyle] = useState<TileStyle>("default");
 
   const setMode = useCallback((m: AppMode) => {
     setModeRaw(m);
@@ -114,7 +118,7 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <MapContext.Provider value={{ map, setMap, mode, setMode, activeLayer, setActiveLayer, selectedItem, selectItem }}>
+    <MapContext.Provider value={{ map, setMap, mode, setMode, activeLayer, setActiveLayer, selectedItem, selectItem, tileStyle, setTileStyle }}>
       {children}
     </MapContext.Provider>
   );

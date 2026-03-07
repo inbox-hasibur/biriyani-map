@@ -4,12 +4,13 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle } from "r
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useState, useCallback } from "react";
-import { useMapContext, LAYER_META } from "./MapContext";
+import { useMapContext, LAYER_META, type TileStyle } from "./MapContext";
 import { useMapItems, MapItem } from "@/hooks/useMapItems";
 import { createLayerMarker } from "@/lib/markerIcon";
 import CreateSpotModal from "./CreateSpotModal";
 import type { LayerFormData, BiriyaniFormData, ToiletFormData, GoodsFormData, ViolenceFormData } from "./CreateSpotModal";
 import { supabase } from "@/lib/supabaseClient";
+import MapControls from "./MapControls";
 
 // Fix default marker icons for Next.js
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -36,8 +37,32 @@ const dropPinIcon = L.divIcon({
   </svg>`,
   iconSize: [40, 54],
   iconAnchor: [20, 54],
-  className: "",
+  className: "drop-pin-bounce",
 });
+
+/* ── Tile layer configurations ── */
+const TILE_CONFIGS: Record<TileStyle, { url: string; attribution: string; maxZoom: number }> = {
+  default: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+    maxZoom: 18,
+  },
+  dark: {
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+    maxZoom: 20,
+  },
+  terrain: {
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+    maxZoom: 17,
+  },
+};
 
 function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
   const map = useMap();
@@ -49,7 +74,7 @@ function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
 }
 
 export default function Map() {
-  const { setMap, mode, setMode, activeLayer, selectItem } = useMapContext();
+  const { setMap, mode, setMode, activeLayer, selectItem, tileStyle } = useMapContext();
   const [bbox, setBbox] = useState<[number, number, number, number] | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
@@ -119,7 +144,7 @@ export default function Map() {
 
     if (insertError) {
       setSubmitError(insertError);
-      return;
+      throw new Error(insertError);
     }
 
     setModalOpen(false);
@@ -129,6 +154,7 @@ export default function Map() {
   }
 
   const items = itemsQuery.data ?? [];
+  const tileConfig = TILE_CONFIGS[tileStyle];
 
   return (
     <MapContainer
@@ -138,11 +164,12 @@ export default function Map() {
       zoomControl={false}
       className="h-full w-full outline-none"
     >
-      {/* ── OpenStreetMap tiles — much better detail at all zoom levels ── */}
+      {/* ── Dynamic tile layer ── */}
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        maxZoom={19}
+        key={tileStyle}
+        attribution={tileConfig.attribution}
+        url={tileConfig.url}
+        maxZoom={tileConfig.maxZoom}
       />
 
       <MapInstanceCapture
@@ -163,6 +190,9 @@ export default function Map() {
       <UserLocationTracker
         onLocationUpdate={setUserLocation}
       />
+
+      {/* Map Controls — zoom, layers, locate, etc */}
+      <MapControls />
 
       {/* User location blue dot */}
       {userLocation && (

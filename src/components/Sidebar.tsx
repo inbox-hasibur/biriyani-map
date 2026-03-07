@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { UtensilsCrossed, PlusCircle, User, Locate, ShoppingBasket, AlertTriangle, Droplets, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Navigation, Star, X } from "lucide-react";
+import { UtensilsCrossed, PlusCircle, User, Locate, ShoppingBasket, AlertTriangle, Droplets, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Navigation, Star, X, Clock } from "lucide-react";
 import { useMapContext, LAYER_META, LAYER_ORDER, MapLayer } from "./MapContext";
 import { useMapItems, MapItem } from "@/hooks/useMapItems";
+import { formatDistanceToNow } from "date-fns";
 
 export default function Sidebar() {
   const { mode, setMode, activeLayer, setActiveLayer, map, selectItem } = useMapContext();
@@ -69,7 +70,7 @@ export default function Sidebar() {
               const isActive = activeLayer === layerId;
               return (
                 <button key={layerId} onClick={() => setActiveLayer(layerId)}
-                  className={`group relative flex items-center gap-2.5 rounded-xl cursor-pointer transition-all duration-200 ${collapsed ? "p-2.5 justify-center" : "px-3 py-2.5"} ${isActive ? `${lm.accentBg} text-white shadow-md` : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
+                  className={`stagger-item group relative flex items-center gap-2.5 rounded-xl cursor-pointer transition-all duration-200 hover-lift ${collapsed ? "p-2.5 justify-center" : "px-3 py-2.5"} ${isActive ? `${lm.accentBg} text-white shadow-md` : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
                   aria-label={lm.label}>
                   <span className="shrink-0">{layerIcons[layerId]}</span>
                   {!collapsed && <span className="text-sm font-medium truncate">{lm.label}</span>}
@@ -83,9 +84,9 @@ export default function Sidebar() {
 
           <div className="px-2">
             <button onClick={() => setMode(mode === "addSpot" ? "browse" : "addSpot")}
-              className={`group relative flex items-center gap-2.5 rounded-xl cursor-pointer transition-all duration-200 w-full ${collapsed ? "p-2.5 justify-center" : "px-3 py-2.5"} ${mode === "addSpot" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
+              className={`group relative flex items-center gap-2.5 rounded-xl cursor-pointer transition-all duration-200 w-full hover-lift ${collapsed ? "p-2.5 justify-center" : "px-3 py-2.5"} ${mode === "addSpot" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
               aria-label={meta.addLabel}>
-              <PlusCircle size={18} className="shrink-0" />
+              <PlusCircle size={18} className={`shrink-0 transition-transform duration-300 ${mode === "addSpot" ? "rotate-45" : ""}`} />
               {!collapsed && <span className="text-sm font-medium">{meta.addLabel}</span>}
             </button>
           </div>
@@ -189,7 +190,7 @@ export default function Sidebar() {
   );
 }
 
-/* ── Nearby List Item — modeled after ToiletMap BD style ── */
+/* ── Nearby List Item — with timestamps ── */
 function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLayer; onClick: () => void }) {
   const meta = LAYER_META[layer];
 
@@ -207,6 +208,15 @@ function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLay
       case "goods": return ("shop_name" in item ? `${item.shop_name}` : "Shop");
       case "violence": return ("incident_type" in item ? item.incident_type : "") || "Incident";
     }
+  };
+
+  const getTime = (): string => {
+    if ("created_at" in item && item.created_at) {
+      try {
+        return formatDistanceToNow(new Date(item.created_at as string), { addSuffix: true });
+      } catch { return ""; }
+    }
+    return "";
   };
 
   const getBadges = (): React.ReactNode[] => {
@@ -231,18 +241,26 @@ function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLay
     return badges;
   };
 
+  const timeStr = getTime();
+
   return (
-    <button onClick={onClick} className="w-full text-left px-4 py-3 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-center gap-3">
-      <div className={`w-8 h-8 rounded-xl ${meta.accentBg}/10 flex items-center justify-center text-sm shrink-0`}>
+    <button onClick={onClick} className="stagger-item w-full text-left px-4 py-3 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-xl ${meta.accentBg}/10 flex items-center justify-center text-sm shrink-0`}>
         {meta.emoji}
       </div>
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-slate-800 truncate">{getTitle()}</p>
         <p className="text-[11px] text-slate-400 truncate">{getSubtitle()}</p>
-        {getBadges().length > 0 && (
-          <div className="flex items-center gap-1 mt-1">{getBadges()}</div>
-        )}
+        <div className="flex items-center gap-1 mt-1 flex-wrap">
+          {getBadges()}
+          {timeStr && (
+            <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-slate-400 timestamp">
+              <Clock size={8} />
+              {timeStr}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col items-end gap-1 shrink-0">

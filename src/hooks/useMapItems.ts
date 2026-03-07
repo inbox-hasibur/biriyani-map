@@ -16,6 +16,7 @@ export type BiriyaniSpot = {
     food_type?: string;
     time?: string;
     score: number;
+    created_at?: string;
 };
 
 export type ToiletSpot = {
@@ -30,6 +31,7 @@ export type ToiletSpot = {
     rating_count: number;
     notes?: string;
     score: number;
+    created_at?: string;
 };
 
 export type GoodsPrice = {
@@ -94,7 +96,7 @@ async function fetchBiriyani(bbox?: [number, number, number, number]): Promise<B
 
     let query = supabase
         .from("spots")
-        .select("id, title, description, lat, lng, food_type, time, score")
+        .select("id, title, description, lat, lng, food_type, time, score, created_at")
         .eq("is_visible", true)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -114,7 +116,7 @@ async function fetchToilets(bbox?: [number, number, number, number]): Promise<To
 
     let query = supabase
         .from("toilets")
-        .select("id, name, lat, lng, is_paid, has_water, rating_avg, rating_count, notes, score")
+        .select("id, name, lat, lng, is_paid, has_water, rating_avg, rating_count, notes, score, created_at")
         .eq("is_visible", true)
         .order("created_at", { ascending: false })
         .limit(500);

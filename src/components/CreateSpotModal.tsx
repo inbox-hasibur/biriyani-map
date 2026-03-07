@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, AlertCircle, MapPin, Check } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, AlertCircle, MapPin, Check, ChevronDown } from "lucide-react";
 import { LAYER_META, type MapLayer } from "./MapContext";
 
 /* ── Form data types ── */
@@ -23,6 +23,8 @@ export default function CreateSpotModal({
 }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const meta = LAYER_META[activeLayer];
 
   // Biriyani
@@ -45,6 +47,9 @@ export default function CreateSpotModal({
   const [violenceDesc, setViolenceDesc] = useState("");
   const [incidentType, setIncidentType] = useState("Theft");
 
+  // Clear local error when parent error changes
+  useEffect(() => { if (error) setLocalError(error); }, [error]);
+
   if (!isOpen) return null;
 
   function resetAll() {
@@ -53,12 +58,14 @@ export default function CreateSpotModal({
     setProductName(""); setPrice(""); setUnit("kg"); setShopName("");
     setViolenceTitle(""); setViolenceDesc(""); setIncidentType("Theft");
     setSuccess(false);
+    setLocalError(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setSuccess(false);
+    setLocalError(null);
     try {
       let data: LayerFormData;
       switch (activeLayer) {
@@ -68,10 +75,13 @@ export default function CreateSpotModal({
         case "violence": data = { title: violenceTitle, description: violenceDesc, incidentType }; break;
       }
       await onSubmit(data, lat, lng);
+      // Only show success if onSubmit didn't throw
       setSuccess(true);
-      setTimeout(() => { resetAll(); }, 600);
+      setTimeout(() => { resetAll(); }, 800);
     } catch (err) {
-      console.error(err);
+      const msg = err instanceof Error ? err.message : "Failed to save. Please try again.";
+      setLocalError(msg);
+      setSuccess(false);
     } finally {
       setLoading(false);
     }
@@ -86,20 +96,22 @@ export default function CreateSpotModal({
     }
   }
 
+  const displayError = localError || error;
+
   return (
     <>
-      {/* ── Bottom Sheet (doesn't blur the map!) ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[9999] md:left-[204px] animate-slide-up pointer-events-auto">
-        <div className="create-sheet mx-auto max-w-lg">
+      {/* ── Bottom Sheet — sits above mobile nav ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-[9999] md:left-[204px] animate-slide-up pointer-events-auto" style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}>
+        <div ref={formRef} className="create-sheet mx-auto max-w-lg md:mb-0 mb-[130px]">
           {/* Drag handle */}
           <div className="flex justify-center pt-2.5 pb-1">
-            <div className="w-10 h-1 rounded-full bg-slate-300" />
+            <div className="w-10 h-1 rounded-full bg-slate-300 hover:bg-slate-400 transition-colors" />
           </div>
 
           {/* Header */}
           <div className="px-4 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className={`w-8 h-8 rounded-lg ${meta.accentBg} flex items-center justify-center text-base`}>
+              <div className={`w-9 h-9 rounded-xl ${meta.accentBg} flex items-center justify-center text-lg shadow-md animate-bounce-in`}>
                 {meta.emoji}
               </div>
               <div>
@@ -110,90 +122,104 @@ export default function CreateSpotModal({
                 </div>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition" aria-label="Close">
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-all hover:rotate-90 duration-200" aria-label="Close">
               <X size={16} className="text-slate-400" />
             </button>
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="mx-4 mb-2 flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs">
-              <AlertCircle size={12} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+          {/* Scrollable form area for mobile */}
+          <div className="max-h-[40vh] md:max-h-[50vh] overflow-y-auto scrollbar-hide">
+            {/* Error */}
+            {displayError && (
+              <div className="mx-4 mb-2 flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 rounded-xl px-3 py-2.5 text-xs animate-fade-up">
+                <AlertCircle size={13} className="mt-0.5 shrink-0 animate-pulse" />
+                <div>
+                  <span className="font-semibold">Error: </span>
+                  <span>{displayError}</span>
+                </div>
+              </div>
+            )}
 
-          {/* Success */}
-          {success && (
-            <div className="mx-4 mb-2 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-lg px-3 py-2 text-xs">
-              <Check size={12} className="shrink-0" />
-              <span>Added successfully!</span>
-            </div>
-          )}
+            {/* Success */}
+            {success && (
+              <div className="mx-4 mb-2 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-3 py-2.5 text-xs animate-bounce-in">
+                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center animate-scale-in">
+                  <Check size={12} className="text-white" />
+                </div>
+                <span className="font-semibold">Added successfully!</span>
+              </div>
+            )}
 
-          {/* Compact form */}
-          <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-3">
-            {activeLayer === "biriyani" && (
-              <>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title *" className={inpCls(meta.accentRing)} required />
-                <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className={inpCls(meta.accentRing)} />
-                <div className="grid grid-cols-2 gap-2">
-                  <select value={foodType} onChange={(e) => setFoodType(e.target.value)} className={inpCls(meta.accentRing)}>
-                    <option>Biriyani</option><option>Tehari</option><option>Water</option><option>Iftar Pack</option><option>Other</option>
+            {/* Compact form */}
+            <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-3">
+              {activeLayer === "biriyani" && (
+                <>
+                  <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title *" className={inpCls(meta.accentRing)} required />
+                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className={inpCls(meta.accentRing)} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={foodType} onChange={(e) => setFoodType(e.target.value)} className={inpCls(meta.accentRing)}>
+                      <option>Biriyani</option><option>Tehari</option><option>Water</option><option>Iftar Pack</option><option>Other</option>
+                    </select>
+                    <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} className={inpCls(meta.accentRing)} />
+                  </div>
+                </>
+              )}
+              {activeLayer === "toilet" && (
+                <>
+                  <input type="text" value={toiletName} onChange={(e) => setToiletName(e.target.value)} placeholder="Toilet name *" className={inpCls(meta.accentRing)} required />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setIsPaid(!isPaid)} className={`${pillCls} ${isPaid ? "bg-amber-100 border-amber-300 text-amber-700" : "bg-green-50 border-green-200 text-green-700"}`}>
+                      {isPaid ? "💰 Paid" : "✅ Free"}
+                    </button>
+                    <button type="button" onClick={() => setHasWater(!hasWater)} className={`${pillCls} ${hasWater ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-slate-100 border-slate-200 text-slate-500"}`}>
+                      {hasWater ? "💧 Water" : "🚫 No Water"}
+                    </button>
+                  </div>
+                  <input type="text" value={toiletNotes} onChange={(e) => setToiletNotes(e.target.value)} placeholder="Notes (optional)" className={inpCls(meta.accentRing)} />
+                </>
+              )}
+              {activeLayer === "goods" && (
+                <>
+                  <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Product name *" className={inpCls(meta.accentRing)} required />
+                  <div className="grid grid-cols-5 gap-2">
+                    <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="৳ Price *" className={`col-span-3 ${inpCls(meta.accentRing)}`} required min="0" step="0.5" />
+                    <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`col-span-2 ${inpCls(meta.accentRing)}`}>
+                      <option value="kg">per kg</option><option value="piece">per pc</option><option value="dozen">per dz</option><option value="liter">per L</option>
+                    </select>
+                  </div>
+                  <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Shop / market name *" className={inpCls(meta.accentRing)} required />
+                </>
+              )}
+              {activeLayer === "violence" && (
+                <>
+                  <input type="text" value={violenceTitle} onChange={(e) => setViolenceTitle(e.target.value)} placeholder="Incident title *" className={inpCls(meta.accentRing)} required />
+                  <input type="text" value={violenceDesc} onChange={(e) => setViolenceDesc(e.target.value)} placeholder="What happened? (optional)" className={inpCls(meta.accentRing)} />
+                  <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className={inpCls(meta.accentRing)}>
+                    <option>Theft</option><option>Assault</option><option>Harassment</option><option>Vandalism</option><option>Robbery</option><option>Eve Teasing</option><option>Other</option>
                   </select>
-                  <input type="datetime-local" value={time} onChange={(e) => setTime(e.target.value)} className={inpCls(meta.accentRing)} />
-                </div>
-              </>
-            )}
-            {activeLayer === "toilet" && (
-              <>
-                <input type="text" value={toiletName} onChange={(e) => setToiletName(e.target.value)} placeholder="Toilet name *" className={inpCls(meta.accentRing)} required />
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setIsPaid(!isPaid)} className={`${pillCls} ${isPaid ? "bg-amber-100 border-amber-300 text-amber-700" : "bg-green-50 border-green-200 text-green-700"}`}>
-                    {isPaid ? "💰 Paid" : "✅ Free"}
-                  </button>
-                  <button type="button" onClick={() => setHasWater(!hasWater)} className={`${pillCls} ${hasWater ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-slate-100 border-slate-200 text-slate-500"}`}>
-                    {hasWater ? "💧 Water" : "🚫 No Water"}
-                  </button>
-                </div>
-                <input type="text" value={toiletNotes} onChange={(e) => setToiletNotes(e.target.value)} placeholder="Notes (optional)" className={inpCls(meta.accentRing)} />
-              </>
-            )}
-            {activeLayer === "goods" && (
-              <>
-                <input type="text" value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Product name *" className={inpCls(meta.accentRing)} required />
-                <div className="grid grid-cols-5 gap-2">
-                  <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="৳ Price *" className={`col-span-3 ${inpCls(meta.accentRing)}`} required min="0" step="0.5" />
-                  <select value={unit} onChange={(e) => setUnit(e.target.value)} className={`col-span-2 ${inpCls(meta.accentRing)}`}>
-                    <option value="kg">per kg</option><option value="piece">per pc</option><option value="dozen">per dz</option><option value="liter">per L</option>
-                  </select>
-                </div>
-                <input type="text" value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Shop / market name *" className={inpCls(meta.accentRing)} required />
-              </>
-            )}
-            {activeLayer === "violence" && (
-              <>
-                <input type="text" value={violenceTitle} onChange={(e) => setViolenceTitle(e.target.value)} placeholder="Incident title *" className={inpCls(meta.accentRing)} required />
-                <input type="text" value={violenceDesc} onChange={(e) => setViolenceDesc(e.target.value)} placeholder="What happened? (optional)" className={inpCls(meta.accentRing)} />
-                <select value={incidentType} onChange={(e) => setIncidentType(e.target.value)} className={inpCls(meta.accentRing)}>
-                  <option>Theft</option><option>Assault</option><option>Harassment</option><option>Vandalism</option><option>Robbery</option><option>Eve Teasing</option><option>Other</option>
-                </select>
-              </>
-            )}
+                </>
+              )}
 
-            <button
-              type="submit"
-              disabled={loading || !isValid()}
-              className={`w-full ${meta.ctaClass} py-3 rounded-xl font-bold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] flex items-center justify-center gap-2`}
-            >
-              {loading ? "Saving..." : success ? <><Check size={16} /> Done!</> : `${meta.addLabel} ${meta.emoji}`}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={loading || !isValid()}
+                className={`w-full ${meta.ctaClass} py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] flex items-center justify-center gap-2 hover-lift`}
+              >
+                {loading ? (
+                  <><span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> Saving...</>
+                ) : success ? (
+                  <><Check size={16} className="animate-bounce-in" /> Done!</>
+                ) : (
+                  `${meta.addLabel} ${meta.emoji}`
+                )}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-const inpCls = (ring: string) => `w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-sm bg-white placeholder:text-slate-400 transition`;
-const pillCls = "w-full px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 text-center";
+const inpCls = (ring: string) => `w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-sm bg-white placeholder:text-slate-400 transition-all focus:shadow-md focus:border-transparent`;
+const pillCls = "w-full px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 text-center hover:shadow-sm";
