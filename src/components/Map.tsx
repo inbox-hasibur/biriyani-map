@@ -40,7 +40,7 @@ const dropPinIcon = L.divIcon({
   className: "drop-pin-bounce",
 });
 
-/* ── Tile layer configurations ── */
+/* ── Tile layer configurations (8 styles) ── */
 const TILE_CONFIGS: Record<TileStyle, { url: string; attribution: string; maxZoom: number }> = {
   default: {
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -53,14 +53,34 @@ const TILE_CONFIGS: Record<TileStyle, { url: string; attribution: string; maxZoo
     maxZoom: 18,
   },
   dark: {
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+    url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a>',
     maxZoom: 20,
   },
   terrain: {
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
     attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
     maxZoom: 17,
+  },
+  watercolor: {
+    url: "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg",
+    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia</a> &copy; <a href="https://stamen.com/">Stamen</a>',
+    maxZoom: 16,
+  },
+  transport: {
+    url: "https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38",
+    attribution: '&copy; <a href="https://thunderforest.com/">Thunderforest</a>',
+    maxZoom: 19,
+  },
+  humanitarian: {
+    url: "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> Humanitarian',
+    maxZoom: 19,
+  },
+  cycle: {
+    url: "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.cyclosm.org/">CyclOSM</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    maxZoom: 20,
   },
 };
 

@@ -6,7 +6,7 @@ import type { BiriyaniSpot, ToiletSpot, GoodsPrice, ViolenceReport } from "@/hoo
 
 export type MapLayer = "biriyani" | "toilet" | "goods" | "violence";
 export type AppMode = "browse" | "addSpot";
-export type TileStyle = "default" | "satellite" | "dark" | "terrain";
+export type TileStyle = "default" | "satellite" | "dark" | "terrain" | "watercolor" | "transport" | "humanitarian" | "cycle";
 export type MapItem = BiriyaniSpot | ToiletSpot | GoodsPrice | ViolenceReport;
 
 /* ── Layer metadata (single source of truth) ── */
