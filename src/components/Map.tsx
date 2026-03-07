@@ -5,11 +5,10 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 import { useMapContext } from "./MapContext";
-import { useSpots, Spot } from "@/hooks/useSpots";
-import { createCustomMarker } from "@/lib/markerIcon";
-import { getTrustMeta } from "@/lib/trustLevel";
+import { useMapItems, MapItem } from "@/hooks/useMapItems";
+import { createLayerMarker } from "@/lib/markerIcon";
 import CreateSpotModal from "./CreateSpotModal";
-import type { SpotFormData } from "./CreateSpotModal";
+import type { LayerFormData, BiriyaniFormData, ToiletFormData, GoodsFormData, ViolenceFormData } from "./CreateSpotModal";
 import { supabase } from "@/lib/supabaseClient";
 
 // Fix default marker icons for Next.js
@@ -20,7 +19,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Capture map instance via hook (react-leaflet v4+)
 function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
   const map = useMap();
   useEffect(() => {
@@ -31,50 +29,93 @@ function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
 }
 
 export default function Map() {
-  const { setMap, mode, setMode, selectSpot } = useMapContext();
+  const { setMap, mode, setMode, activeLayer, selectItem } = useMapContext();
   const [bbox, setBbox] = useState<[number, number, number, number] | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const spotsQuery = useSpots(bbox);
+  const itemsQuery = useMapItems(activeLayer, bbox);
 
-  async function handleCreateSpot(data: SpotFormData, lat: number, lng: number) {
+  async function handleCreateItem(data: LayerFormData, lat: number, lng: number) {
     setSubmitError(null);
 
     if (!supabase) {
-      console.log("[dev mock] Create spot:", { ...data, lat, lng });
+      console.log(`[dev mock] Create ${activeLayer}:`, { ...data, lat, lng });
       setModalOpen(false);
       setMode("browse");
       return;
     }
 
-    const { error } = await supabase.from("spots").insert({
-      title: data.title,
-      description: data.description ?? null,
-      lat,
-      lng,
-      food_type: data.foodType,
-      time: data.time ? new Date(data.time).toISOString() : null,
-      score: 0,
-      verified: false,
-      is_visible: true,
-    });
+    let insertError: string | null = null;
 
-    if (error) {
-      console.error("Insert spot error:", error.message);
-      setSubmitError(error.message);
+    switch (activeLayer) {
+      case "biriyani": {
+        const d = data as BiriyaniFormData;
+        const { error } = await supabase.from("spots").insert({
+          title: d.title,
+          description: d.description ?? null,
+          lat, lng,
+          food_type: d.foodType,
+          time: d.time ? new Date(d.time).toISOString() : null,
+          score: 0, verified: false, is_visible: true,
+        });
+        if (error) insertError = error.message;
+        break;
+      }
+      case "toilet": {
+        const d = data as ToiletFormData;
+        const { error } = await supabase.from("toilets").insert({
+          name: d.name,
+          lat, lng,
+          is_paid: d.isPaid,
+          has_water: d.hasWater,
+          notes: d.notes ?? null,
+          rating_avg: 0, rating_count: 0, score: 0, is_visible: true,
+        });
+        if (error) insertError = error.message;
+        break;
+      }
+      case "goods": {
+        const d = data as GoodsFormData;
+        const { error } = await supabase.from("goods_prices").insert({
+          product_name: d.productName,
+          price: d.price,
+          unit: d.unit,
+          shop_name: d.shopName,
+          lat, lng,
+          score: 0, is_visible: true,
+        });
+        if (error) insertError = error.message;
+        break;
+      }
+      case "violence": {
+        const d = data as ViolenceFormData;
+        const { error } = await supabase.from("violence_reports").insert({
+          title: d.title,
+          description: d.description ?? null,
+          incident_type: d.incidentType,
+          lat, lng,
+          upvotes: 0, downvotes: 0, score: 0, is_visible: true,
+        });
+        if (error) insertError = error.message;
+        break;
+      }
+    }
+
+    if (insertError) {
+      console.error("Insert error:", insertError);
+      setSubmitError(insertError);
       return;
     }
 
     setModalOpen(false);
     setSelectedPos(null);
     setMode("browse");
-    spotsQuery.refetch();
+    itemsQuery.refetch();
   }
 
-  function handleMarkerClick(spot: Spot) {
-    // In browse mode, open the bottom detail sheet
-    selectSpot(spot);
+  function handleMarkerClick(item: MapItem) {
+    selectItem(item);
   }
 
   return (
@@ -85,7 +126,6 @@ export default function Map() {
       zoomControl={false}
       className="h-full w-full outline-none"
     >
-      {/* Google Maps-like tiles */}
       <TileLayer
         attribution='Tiles &copy; <a href="https://www.esri.com">Esri</a>'
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
@@ -107,21 +147,21 @@ export default function Map() {
         setSelectedPos={setSelectedPos}
       />
 
-      {/* Render spot markers */}
-      {spotsQuery.data?.map((s) =>
-        s?.lat && s?.lng ? (
+      {/* Render items for active layer */}
+      {itemsQuery.data?.map((item) =>
+        item?.lat && item?.lng ? (
           <Marker
-            key={s.id}
-            position={[s.lat, s.lng]}
-            icon={createCustomMarker(s.score)}
+            key={item.id}
+            position={[item.lat, item.lng]}
+            icon={createLayerMarker(activeLayer, item.score)}
             eventHandlers={{
-              click: () => handleMarkerClick(s),
+              click: () => handleMarkerClick(item),
             }}
           />
         ) : null
       )}
 
-      {/* Create spot modal — only visible in addSpot mode */}
+      {/* Create modal */}
       {selectedPos && (
         <CreateSpotModal
           isOpen={modalOpen}
@@ -129,10 +169,11 @@ export default function Map() {
             setModalOpen(false);
             setSelectedPos(null);
           }}
-          onSubmit={handleCreateSpot}
+          onSubmit={handleCreateItem}
           lat={selectedPos[0]}
           lng={selectedPos[1]}
           error={submitError}
+          activeLayer={activeLayer}
         />
       )}
     </MapContainer>
@@ -160,12 +201,10 @@ function MapEvents({
       setBbox([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
     },
     click(e) {
-      // Only open the create-spot modal when in "addSpot" mode
       if (mode === "addSpot") {
         setSelectedPos([e.latlng.lat, e.latlng.lng]);
         setModalOpen(true);
       }
-      // In "browse" mode, clicking the map does nothing (normal navigation)
     },
   });
   return null;

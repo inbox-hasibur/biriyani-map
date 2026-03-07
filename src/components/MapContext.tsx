@@ -2,17 +2,22 @@
 
 import React, { createContext, useContext, useState, useCallback } from "react";
 import type { Map as LeafletMap } from "leaflet";
-import type { Spot } from "@/hooks/useSpots";
+import type { BiriyaniSpot, ToiletSpot, GoodsPrice, ViolenceReport } from "@/hooks/useMapItems";
 
+export type MapLayer = "biriyani" | "toilet" | "goods" | "violence";
 export type AppMode = "browse" | "addSpot";
+
+export type MapItem = BiriyaniSpot | ToiletSpot | GoodsPrice | ViolenceReport;
 
 type MapContextValue = {
   map: LeafletMap | null;
   setMap: (m: LeafletMap | null) => void;
   mode: AppMode;
   setMode: (m: AppMode) => void;
-  selectedSpot: Spot | null;
-  selectSpot: (s: Spot | null) => void;
+  activeLayer: MapLayer;
+  setActiveLayer: (l: MapLayer) => void;
+  selectedItem: MapItem | null;
+  selectItem: (s: MapItem | null) => void;
 };
 
 const MapContext = createContext<MapContextValue | undefined>(undefined);
@@ -20,22 +25,34 @@ const MapContext = createContext<MapContextValue | undefined>(undefined);
 export function MapProvider({ children }: { children: React.ReactNode }) {
   const [map, setMap] = useState<LeafletMap | null>(null);
   const [mode, setModeRaw] = useState<AppMode>("browse");
-  const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+  const [activeLayer, setActiveLayerRaw] = useState<MapLayer>("biriyani");
+  const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
 
   const setMode = useCallback((m: AppMode) => {
     setModeRaw(m);
-    // Clear selected spot when switching modes
-    if (m === "addSpot") setSelectedSpot(null);
+    if (m === "addSpot") setSelectedItem(null);
   }, []);
 
-  const selectSpot = useCallback((s: Spot | null) => {
-    setSelectedSpot(s);
-    // Switch to browse if we're selecting a spot detail
+  const setActiveLayer = useCallback((l: MapLayer) => {
+    setActiveLayerRaw(l);
+    setSelectedItem(null);
+    setModeRaw("browse");
+  }, []);
+
+  const selectItem = useCallback((s: MapItem | null) => {
+    setSelectedItem(s);
     if (s) setModeRaw("browse");
   }, []);
 
   return (
-    <MapContext.Provider value={{ map, setMap, mode, setMode, selectedSpot, selectSpot }}>
+    <MapContext.Provider
+      value={{
+        map, setMap,
+        mode, setMode,
+        activeLayer, setActiveLayer,
+        selectedItem, selectItem,
+      }}
+    >
       {children}
     </MapContext.Provider>
   );

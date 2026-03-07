@@ -6,8 +6,8 @@ import { QueryProvider } from "@/lib/QueryProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Biriyani Map | Iftar Spots Tracker",
-  description: "Real-time community-driven Iftar and Biriyani distribution map.",
+  title: "Universal Map | Biriyani • Toilet • Prices • Safety",
+  description: "Community-driven universal map for biriyani spots, public toilets, goods pricing, and violence reporting. Crowdsourced and fact-checked by real people.",
 };
 
 export default function RootLayout({

@@ -3,17 +3,47 @@
 import { useState } from "react";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import type { MapLayer } from "@/components/MapContext";
 
-export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string; initialScore?: number }) {
+const VOTE_LABELS: Record<MapLayer, { up: string; down: string }> = {
+  biriyani: { up: "Helpful", down: "Fake" },
+  toilet: { up: "Accurate", down: "Inaccurate" },
+  goods: { up: "Correct Price", down: "Wrong Price" },
+  violence: { up: "Confirm", down: "Doubt" },
+};
+
+const TABLE_MAP: Record<MapLayer, string> = {
+  biriyani: "spot_votes",
+  toilet: "toilet_votes",
+  goods: "goods_votes",
+  violence: "violence_votes",
+};
+
+const ID_FIELD_MAP: Record<MapLayer, string> = {
+  biriyani: "spot_id",
+  toilet: "toilet_id",
+  goods: "goods_id",
+  violence: "report_id",
+};
+
+export default function VotingUI({
+  spotId,
+  initialScore = 0,
+  layer = "biriyani",
+}: {
+  spotId: string;
+  initialScore?: number;
+  layer?: MapLayer;
+}) {
   const [score, setScore] = useState(initialScore);
   const [userVote, setUserVote] = useState<1 | -1 | null>(null);
   const [loading, setLoading] = useState(false);
+  const labels = VOTE_LABELS[layer];
 
   async function handleVote(value: 1 | -1) {
     setLoading(true);
     try {
       if (!supabase) {
-        // Dev mock — optimistic update only
         if (userVote === value) {
           setScore((s) => s - value);
           setUserVote(null);
@@ -25,19 +55,20 @@ export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string;
         return;
       }
 
-      // Get logged-in user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         alert("Please log in to vote.");
         return;
       }
 
+      const table = TABLE_MAP[layer];
+      const idField = ID_FIELD_MAP[layer];
+
       if (userVote === value) {
-        // Remove existing vote
         const { error } = await supabase
-          .from("spot_votes")
+          .from(table)
           .delete()
-          .eq("spot_id", spotId)
+          .eq(idField, spotId)
           .eq("user_id", user.id);
 
         if (!error) {
@@ -47,12 +78,11 @@ export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string;
           console.error("Remove vote error:", error.message);
         }
       } else {
-        // Upsert — insert or update if already voted with different value
         const { error } = await supabase
-          .from("spot_votes")
+          .from(table)
           .upsert(
-            { spot_id: spotId, user_id: user.id, value },
-            { onConflict: "spot_id,user_id" }
+            { [idField]: spotId, user_id: user.id, value },
+            { onConflict: `${idField},user_id` }
           );
 
         if (!error) {
@@ -80,7 +110,7 @@ export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string;
         aria-label="Upvote"
       >
         <ThumbsUp size={16} />
-        <span className="text-xs">Helpful</span>
+        <span className="text-xs">{labels.up}</span>
       </button>
 
       <button
@@ -93,7 +123,7 @@ export default function VotingUI({ spotId, initialScore = 0 }: { spotId: string;
         aria-label="Downvote"
       >
         <ThumbsDown size={16} />
-        <span className="text-xs">Fake</span>
+        <span className="text-xs">{labels.down}</span>
       </button>
 
       <div className="ml-auto text-sm font-bold text-slate-600">

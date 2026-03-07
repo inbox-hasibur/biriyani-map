@@ -73,9 +73,9 @@ body {
   color: rgb(var(--primary-dk));
 }
 
-/* ─── CTA Button ─── */
+/* ─── CTA Buttons (per layer) ─── */
 .cta-yellow {
-  background: linear-gradient(180deg, var(--accent-from) 0%, var(--accent-to) 100%);
+  background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
   color: rgb(var(--primary-dk));
   box-shadow: 0 6px 18px rgba(245, 158, 11, 0.2);
   font-weight: 600;
@@ -83,6 +83,45 @@ body {
 
 .cta-yellow:hover {
   box-shadow: 0 8px 24px rgba(245, 158, 11, 0.3);
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+.cta-blue {
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+  color: white;
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.2);
+  font-weight: 600;
+}
+
+.cta-blue:hover {
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+.cta-green {
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
+  color: white;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.2);
+  font-weight: 600;
+}
+
+.cta-green:hover {
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+.cta-red {
+  background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+  color: white;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.2);
+  font-weight: 600;
+}
+
+.cta-red:hover {
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
   transform: translateY(-1px);
   transition: all 0.2s ease;
 }
@@ -119,6 +158,16 @@ body {
   color: white;
   padding: 2px 8px;
   border-radius: 20px;
+}
+
+/* ─── Scrollbar hide for mobile layer pills ─── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
 
 /* ─── Responsive Adjustments ─── */
