@@ -60,36 +60,36 @@ export default function MapControls() {
     }
 
     // Responsive sizes
-    const btnBase = "flex items-center justify-center rounded-xl transition-all duration-200 active:scale-90 hover:scale-105 w-8 h-8 md:w-9 md:h-9";
+    const btnBase = "flex items-center justify-center rounded-xl transition-all duration-200 active:scale-90 hover:scale-105 w-7 h-7 md:w-9 md:h-9";
     const btnLight = "bg-white/95 backdrop-blur-md shadow-md border border-slate-100/50 text-slate-600 hover:bg-white hover:shadow-lg";
 
     return (
         <>
             {/* ── Right side controls ── */}
-            <div className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 z-[1000] flex flex-col gap-1.5 md:gap-2 pointer-events-auto">
+            <div className="absolute right-1.5 md:right-3 top-1/2 -translate-y-1/2 z-[1000] flex flex-col gap-1 md:gap-2 pointer-events-auto">
                 {/* Zoom */}
                 <div className="flex flex-col rounded-xl md:rounded-2xl overflow-hidden shadow-md border border-slate-100/50 bg-white/95 backdrop-blur-md">
                     <button onClick={handleZoomIn} className={`${btnBase} border-b border-slate-100 rounded-none text-slate-700 hover:bg-slate-50`} aria-label="Zoom in">
-                        <Plus size={16} strokeWidth={2.5} />
+                        <Plus size={14} strokeWidth={2.5} className="md:w-4 md:h-4" />
                     </button>
                     <button onClick={handleZoomOut} className={`${btnBase} rounded-none text-slate-700 hover:bg-slate-50`} aria-label="Zoom out">
-                        <Minus size={16} strokeWidth={2.5} />
+                        <Minus size={14} strokeWidth={2.5} className="md:w-4 md:h-4" />
                     </button>
                 </div>
 
                 {/* Locate */}
                 <button onClick={handleLocate} className={`${btnBase} ${btnLight} ${locating ? "animate-pulse ring-2 ring-blue-400 ring-offset-1" : ""}`} aria-label="My location">
-                    <Locate size={15} className={`transition-colors ${locating ? "text-blue-500" : ""}`} />
+                    <Locate size={13} className={`transition-colors md:w-[15px] md:h-[15px] ${locating ? "text-blue-500" : ""}`} />
                 </button>
 
                 {/* Layers */}
                 <button onClick={() => setLayerPanelOpen(!layerPanelOpen)} className={`${btnBase} ${layerPanelOpen ? "bg-slate-900 text-white shadow-xl" : btnLight}`} aria-label="Map layers">
-                    <Layers size={15} />
+                    <Layers size={13} className="md:w-[15px] md:h-[15px]" />
                 </button>
 
                 {/* Compass */}
                 <button onClick={handleResetNorth} className={`${btnBase} ${btnLight}`} aria-label="Reset north">
-                    <Compass size={15} />
+                    <Compass size={13} className="md:w-[15px] md:h-[15px]" />
                 </button>
 
                 {/* Fullscreen */}
@@ -116,8 +116,8 @@ export default function MapControls() {
                                         key={style.id}
                                         onClick={() => { setTileStyle(style.id); setLayerPanelOpen(false); }}
                                         className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 active:scale-95 ${isActive
-                                                ? "bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg ring-2 ring-blue-400/30"
-                                                : "bg-slate-50/80 text-slate-600 hover:bg-slate-100 hover:shadow-sm"
+                                            ? "bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg ring-2 ring-blue-400/30"
+                                            : "bg-slate-50/80 text-slate-600 hover:bg-slate-100 hover:shadow-sm"
                                             }`}
                                     >
                                         <span className="text-lg leading-none">{style.emoji}</span>

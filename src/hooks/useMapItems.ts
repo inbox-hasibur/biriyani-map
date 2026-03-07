@@ -180,9 +180,9 @@ const FETCHERS: Record<MapLayer, (bbox?: [number, number, number, number]) => Pr
     violence: fetchViolence,
 };
 
-export function useMapItems(layer: MapLayer, bbox?: [number, number, number, number]) {
+export function useMapItems(layer: MapLayer, bbox?: [number, number, number, number], refetchTrigger?: number) {
     return useQuery({
-        queryKey: ["mapItems", layer, bbox],
+        queryKey: ["mapItems", layer, bbox, refetchTrigger],
         queryFn: () => FETCHERS[layer](bbox),
         staleTime: 5 * 1000,
         gcTime: 10 * 60 * 1000,

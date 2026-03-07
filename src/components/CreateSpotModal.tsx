@@ -102,7 +102,7 @@ export default function CreateSpotModal({
     <>
       {/* ── Bottom Sheet — sits above mobile nav ── */}
       <div className="fixed bottom-0 left-0 right-0 z-[9999] md:left-[204px] animate-slide-up pointer-events-auto" style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}>
-        <div ref={formRef} className="create-sheet mx-auto max-w-lg md:mb-0 mb-[130px]">
+        <div ref={formRef} className="create-sheet mx-auto max-w-lg md:mb-0 mb-[105px]">
           {/* Drag handle */}
           <div className="flex justify-center pt-2.5 pb-1">
             <div className="w-10 h-1 rounded-full bg-slate-300 hover:bg-slate-400 transition-colors" />
@@ -111,11 +111,11 @@ export default function CreateSpotModal({
           {/* Header */}
           <div className="px-4 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className={`w-9 h-9 rounded-xl ${meta.accentBg} flex items-center justify-center text-lg shadow-md animate-bounce-in`}>
+              <div className={`w-7 h-7 md:w-9 md:h-9 rounded-xl ${meta.accentBg} flex items-center justify-center text-base md:text-lg shadow-md animate-bounce-in`}>
                 {meta.emoji}
               </div>
               <div>
-                <span className="text-sm font-bold text-slate-800">{meta.addLabel}</span>
+                <span className="text-xs md:text-sm font-bold text-slate-800">{meta.addLabel}</span>
                 <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
                   <MapPin size={9} />
                   {lat.toFixed(4)}, {lng.toFixed(4)}
@@ -151,7 +151,7 @@ export default function CreateSpotModal({
             )}
 
             {/* Compact form */}
-            <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-3">
+            <form onSubmit={handleSubmit} className="px-3 md:px-4 pb-3 md:pb-4 space-y-2.5">
               {activeLayer === "biriyani" && (
                 <>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title *" className={inpCls(meta.accentRing)} required />
@@ -203,7 +203,7 @@ export default function CreateSpotModal({
               <button
                 type="submit"
                 disabled={loading || !isValid()}
-                className={`w-full ${meta.ctaClass} py-3.5 rounded-xl font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] flex items-center justify-center gap-2 hover-lift`}
+                className={`w-full ${meta.ctaClass} py-3 md:py-3.5 rounded-xl font-bold text-xs md:text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] flex items-center justify-center gap-2 hover-lift`}
               >
                 {loading ? (
                   <><span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> Saving...</>
@@ -221,5 +221,5 @@ export default function CreateSpotModal({
   );
 }
 
-const inpCls = (ring: string) => `w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-sm bg-white placeholder:text-slate-400 transition-all focus:shadow-md focus:border-transparent`;
-const pillCls = "w-full px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 text-center hover:shadow-sm";
+const inpCls = (ring: string) => `w-full px-2.5 md:px-3 py-2 md:py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-xs md:text-sm bg-white placeholder:text-slate-400 transition-all focus:shadow-md focus:border-transparent`;
+const pillCls = "w-full px-2.5 md:px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-semibold border transition-all active:scale-95 text-center hover:shadow-sm";

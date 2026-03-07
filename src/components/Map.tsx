@@ -94,13 +94,13 @@ function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
 }
 
 export default function Map() {
-  const { setMap, mode, setMode, activeLayer, selectItem, tileStyle } = useMapContext();
+  const { setMap, mode, setMode, activeLayer, selectItem, tileStyle, refetchTrigger } = useMapContext();
   const [bbox, setBbox] = useState<[number, number, number, number] | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const itemsQuery = useMapItems(activeLayer, bbox);
+  const itemsQuery = useMapItems(activeLayer, bbox, refetchTrigger);
 
   async function handleCreateItem(data: LayerFormData, lat: number, lng: number) {
     setSubmitError(null);

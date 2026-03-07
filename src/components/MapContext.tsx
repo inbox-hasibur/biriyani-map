@@ -90,6 +90,8 @@ type MapContextValue = {
   selectItem: (s: MapItem | null) => void;
   tileStyle: TileStyle;
   setTileStyle: (s: TileStyle) => void;
+  refetchTrigger: number;
+  triggerRefetch: () => void;
 };
 
 const MapContext = createContext<MapContextValue | undefined>(undefined);
@@ -100,6 +102,7 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
   const [activeLayer, setActiveLayerRaw] = useState<MapLayer>("biriyani");
   const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
   const [tileStyle, setTileStyle] = useState<TileStyle>("default");
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   const setMode = useCallback((m: AppMode) => {
     setModeRaw(m);
@@ -117,8 +120,12 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
     if (s) setModeRaw("browse");
   }, []);
 
+  const triggerRefetch = useCallback(() => {
+    setRefetchTrigger((c) => c + 1);
+  }, []);
+
   return (
-    <MapContext.Provider value={{ map, setMap, mode, setMode, activeLayer, setActiveLayer, selectedItem, selectItem, tileStyle, setTileStyle }}>
+    <MapContext.Provider value={{ map, setMap, mode, setMode, activeLayer, setActiveLayer, selectedItem, selectItem, tileStyle, setTileStyle, refetchTrigger, triggerRefetch }}>
       {children}
     </MapContext.Provider>
   );

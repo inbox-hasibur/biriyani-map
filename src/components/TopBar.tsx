@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, MapPin, X, Clock } from "lucide-react";
 import { useMapContext, LAYER_META } from "./MapContext";
 import { useMapItems } from "@/hooks/useMapItems";
@@ -12,6 +12,42 @@ function useLiveClock() {
     return () => clearInterval(timer);
   }, []);
   return now;
+}
+
+/* ── Animated Counter ── */
+function AnimatedCount({ value, loading }: { value: number; loading: boolean }) {
+  const [display, setDisplay] = useState(value);
+  const [changed, setChanged] = useState(false);
+  const prevRef = useRef(value);
+
+  useEffect(() => {
+    if (value !== prevRef.current) {
+      setChanged(true);
+      // Simple count-up animation
+      const start = prevRef.current;
+      const diff = value - start;
+      const steps = Math.min(Math.abs(diff), 10);
+      const stepTime = 300 / Math.max(steps, 1);
+      let current = 0;
+
+      const interval = setInterval(() => {
+        current++;
+        const progress = current / steps;
+        setDisplay(Math.round(start + diff * progress));
+        if (current >= steps) {
+          clearInterval(interval);
+          setDisplay(value);
+          setTimeout(() => setChanged(false), 200);
+        }
+      }, stepTime);
+
+      prevRef.current = value;
+      return () => clearInterval(interval);
+    }
+  }, [value]);
+
+  if (loading) return <span className="stat-number">…</span>;
+  return <span className={`stat-number ${changed ? "changed" : ""}`}>{display}</span>;
 }
 
 export default function TopBar() {
@@ -65,10 +101,10 @@ export default function TopBar() {
           {/* Search */}
           <form
             onSubmit={handleSearch}
-            className={`topbar-card pointer-events-auto flex items-center px-3 py-2 gap-2 w-full max-w-lg rounded-xl transition-all duration-300 ${searchFocused ? "ring-2 ring-blue-400/30 shadow-lg" : ""
+            className={`topbar-card search-focus-glow pointer-events-auto flex items-center px-3 py-2 gap-2 w-full max-w-lg rounded-xl transition-all duration-300 ${searchFocused ? "ring-2 ring-blue-400/30 shadow-lg" : ""
               }`}
           >
-            <Search size={14} className="text-slate-400 shrink-0" />
+            <Search size={14} className={`shrink-0 transition-colors duration-300 ${searchFocused ? "text-blue-500" : "text-slate-400"}`} />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -85,27 +121,27 @@ export default function TopBar() {
           </form>
 
           {/* Live Clock */}
-          <div className="pointer-events-auto topbar-card px-3 py-2 rounded-xl flex items-center gap-1.5 shrink-0">
-            <Clock size={12} className="text-slate-400" />
+          <div className="pointer-events-auto topbar-card px-3 py-2 rounded-xl flex items-center gap-1.5 shrink-0 animate-slide-in-right">
+            <Clock size={12} className="text-blue-400 animate-pulse" />
             <span className="text-[10px] font-bold text-slate-600 timestamp">{timeStr}</span>
             <span className="text-[9px] text-slate-400">{dateStr}</span>
           </div>
 
           {/* Stats Badge */}
-          <div className="pointer-events-auto shrink-0">
+          <div className="pointer-events-auto shrink-0 animate-slide-in-right">
             <div className="topbar-card bg-slate-900/95 text-white px-3 py-2 rounded-xl flex items-center gap-3">
               <div className="flex flex-col leading-none">
                 <span className="text-[8px] text-slate-400 font-semibold uppercase tracking-wider">{meta.statLabel}</span>
-                <span className="text-xs font-bold">{allItemsQuery.isLoading ? "…" : totalCount}</span>
+                <span className="text-xs font-bold"><AnimatedCount value={totalCount} loading={allItemsQuery.isLoading} /></span>
               </div>
               <div className="w-px h-5 bg-slate-700" />
               <div className="flex items-center gap-1" title="Medium (score 5-9)">
                 <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-                <span className="text-xs font-bold">{midCount}</span>
+                <span className="text-xs font-bold"><AnimatedCount value={midCount} loading={allItemsQuery.isLoading} /></span>
               </div>
               <div className="flex items-center gap-1" title="Confirmed (score 10+)">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs font-bold">{highCount}</span>
+                <span className="text-xs font-bold"><AnimatedCount value={highCount} loading={allItemsQuery.isLoading} /></span>
               </div>
             </div>
           </div>
@@ -124,14 +160,14 @@ export default function TopBar() {
       </div>
 
       {/* ── Mobile TopBar (compact) ── */}
-      <div className="md:hidden absolute top-2 left-2 right-2 z-[1000] pointer-events-none">
-        <div className="flex items-center gap-1.5">
+      <div className="md:hidden absolute top-1.5 left-1.5 right-1.5 z-[1000] pointer-events-none">
+        <div className="flex items-center gap-1">
           <form
             onSubmit={handleSearch}
-            className={`topbar-card pointer-events-auto flex items-center px-2.5 py-2 gap-2 flex-1 rounded-xl transition-all duration-300 ${searchFocused ? "ring-2 ring-blue-400/20 shadow-md" : ""
+            className={`topbar-card search-focus-glow pointer-events-auto flex items-center px-2 py-1.5 gap-1.5 flex-1 rounded-xl transition-all duration-300 ${searchFocused ? "ring-2 ring-blue-400/20 shadow-md animate-glow-pulse" : ""
               }`}
           >
-            <Search size={13} className="text-slate-400 shrink-0" />
+            <Search size={11} className={`shrink-0 transition-colors duration-300 ${searchFocused ? "text-blue-500" : "text-slate-400"}`} />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -139,29 +175,29 @@ export default function TopBar() {
               onBlur={() => setSearchFocused(false)}
               type="text"
               placeholder={meta.searchHint}
-              className="bg-transparent outline-none text-slate-700 text-[11px] font-medium w-full placeholder:text-slate-400 min-w-0"
+              className="bg-transparent outline-none text-slate-700 text-[10px] font-medium w-full placeholder:text-slate-400 min-w-0"
             />
             <button type="button" onClick={handleLocate} aria-label="Locate me" className="shrink-0">
-              <MapPin size={13} className={meta.accent} />
+              <MapPin size={11} className={meta.accent} />
             </button>
           </form>
 
           {/* Compact Stats + Time */}
-          <div className="topbar-card pointer-events-auto bg-slate-900/95 text-white px-2 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-bold">{allItemsQuery.isLoading ? "…" : totalCount}</span>
-            <span className="text-[9px] text-slate-400">{meta.emoji}</span>
-            <div className="w-px h-3 bg-slate-700" />
-            <span className="text-[8px] text-slate-400 font-medium timestamp">{timeStr}</span>
+          <div className="topbar-card pointer-events-auto bg-slate-900/95 text-white px-1.5 py-1 rounded-xl flex items-center gap-1 shrink-0">
+            <span className="text-[9px] font-bold"><AnimatedCount value={totalCount} loading={allItemsQuery.isLoading} /></span>
+            <span className="text-[8px] text-slate-400">{meta.emoji}</span>
+            <div className="w-px h-2.5 bg-slate-700" />
+            <span className="text-[7px] text-slate-400 font-medium timestamp">{timeStr}</span>
           </div>
         </div>
 
         {/* Mobile Add Banner */}
         {mode === "addSpot" && (
-          <div className={`topbar-card pointer-events-auto flex items-center gap-2 px-2.5 py-2 rounded-xl mt-1.5 ${meta.accentLight} animate-fade-up`}>
+          <div className={`topbar-card pointer-events-auto flex items-center gap-1.5 px-2 py-1.5 rounded-xl mt-1 ${meta.accentLight} animate-fade-up`}>
             <div className={`w-1.5 h-1.5 rounded-full ${meta.accentBg} animate-pulse shrink-0`} />
-            <p className="text-[10px] font-medium flex-1">{meta.addBanner}</p>
+            <p className="text-[9px] font-medium flex-1">{meta.addBanner}</p>
             <button onClick={() => setMode("browse")} className="p-0.5 rounded-lg transition shrink-0" aria-label="Cancel">
-              <X size={12} />
+              <X size={10} />
             </button>
           </div>
         )}

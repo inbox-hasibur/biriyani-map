@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Navigation, Clock, UtensilsCrossed, Star, ShoppingBasket, AlertTriangle, ExternalLink, Heart } from "lucide-react";
+import { X, Navigation, Clock, UtensilsCrossed, Star, ShoppingBasket, AlertTriangle, ExternalLink, Heart, Trash2 } from "lucide-react";
 import { useMapContext, LAYER_META } from "./MapContext";
 import type { BiriyaniSpot, ToiletSpot, GoodsPrice, ViolenceReport } from "@/hooks/useMapItems";
 import { getTrustMeta } from "@/lib/trustLevel";
 import VotingUI from "./VotingUI";
 import { formatDistanceToNow } from "date-fns";
+import { supabase } from "@/lib/supabaseClient";
 
 /* ── Helpers ── */
 function relativeTime(dateStr?: string): string {
@@ -29,6 +30,14 @@ function absoluteTime(dateStr?: string): string {
         return "";
     }
 }
+
+/* ── Table mapping for delete ── */
+const TABLE_MAP: Record<string, string> = {
+    biriyani: "spots",
+    toilet: "toilets",
+    goods: "goods_prices",
+    violence: "violence_reports",
+};
 
 /* ── Interested Button (localStorage) ── */
 function useInterested(spotId: string) {
@@ -53,16 +62,46 @@ function useInterested(spotId: string) {
 }
 
 export default function SpotDetailSheet() {
-    const { selectedItem, selectItem, activeLayer } = useMapContext();
+    const { selectedItem, selectItem, activeLayer, triggerRefetch } = useMapContext();
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+
     if (!selectedItem) return null;
     const meta = LAYER_META[activeLayer];
+
+    async function handleDelete() {
+        if (!selectedItem) return;
+        setDeleting(true);
+        setDeleteError(null);
+
+        try {
+            if (!supabase) {
+                // Dev mock — simulate delete
+                console.log(`[dev mock] Delete ${activeLayer}:`, selectedItem.id);
+                await new Promise((r) => setTimeout(r, 300));
+            } else {
+                const table = TABLE_MAP[activeLayer];
+                const { error } = await supabase.from(table).delete().eq("id", selectedItem.id);
+                if (error) throw new Error(error.message);
+            }
+
+            setShowDeleteConfirm(false);
+            selectItem(null);
+            triggerRefetch();
+        } catch (err) {
+            setDeleteError(err instanceof Error ? err.message : "Failed to delete");
+        } finally {
+            setDeleting(false);
+        }
+    }
 
     return (
         <>
             <div className="fixed inset-0 z-[900] bg-black/10 md:bg-transparent" onClick={() => selectItem(null)} />
 
             <div className="fixed bottom-0 left-0 right-0 z-[1000] md:left-[80px] animate-slide-up">
-                <div className="detail-sheet mx-auto max-w-2xl">
+                <div className="detail-sheet mx-auto max-w-2xl gradient-border">
                     {/* Drag Handle */}
                     <div className="flex justify-center pt-3 pb-1">
                         <div className="w-10 h-1 rounded-full bg-slate-300 hover:bg-slate-400 transition-colors" />
@@ -111,17 +150,69 @@ export default function SpotDetailSheet() {
                         </a>
                     </div>
 
-                    {/* Interested + Voting */}
-                    <div className="px-5 mt-3 flex items-center gap-3">
+                    {/* Interested + Voting + Delete */}
+                    <div className="px-5 mt-3 flex items-center gap-2">
                         <InterestedButton spotId={selectedItem.id} />
                         <div className="flex-1">
                             <VotingUI spotId={selectedItem.id} initialScore={selectedItem.score} layer={activeLayer} />
                         </div>
+                        <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-all active:scale-90 hover-lift"
+                            aria-label="Delete"
+                        >
+                            <Trash2 size={13} />
+                            <span className="hidden sm:inline">Delete</span>
+                        </button>
                     </div>
 
                     <div className="h-6" />
                 </div>
             </div>
+
+            {/* ── Delete Confirmation Dialog ── */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 delete-dialog-overlay animate-fade-up" onClick={() => setShowDeleteConfirm(false)}>
+                    <div className="delete-dialog p-6 max-w-sm w-full animate-scale-in" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                                <Trash2 size={20} className="text-red-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800">Delete this {meta.label.toLowerCase()}?</h3>
+                                <p className="text-xs text-slate-400 mt-0.5">This action cannot be undone.</p>
+                            </div>
+                        </div>
+
+                        {deleteError && (
+                            <div className="mb-3 text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg animate-fade-up">
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowDeleteConfirm(false)}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all active:scale-95"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-red-500 text-white hover:bg-red-600 transition-all active:scale-95 shadow-md shadow-red-200 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                            >
+                                {deleting ? (
+                                    <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Deleting...</>
+                                ) : (
+                                    <><Trash2 size={12} /> Delete</>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
@@ -134,8 +225,8 @@ function InterestedButton({ spotId }: { spotId: string }) {
         <button
             onClick={toggle}
             className={`interested-btn flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-90 ${isInterested
-                    ? "bg-pink-500 text-white shadow-lg shadow-pink-200 active"
-                    : "bg-pink-50 text-pink-500 border border-pink-200 hover:bg-pink-100"
+                ? "bg-pink-500 text-white shadow-lg shadow-pink-200 active"
+                : "bg-pink-50 text-pink-500 border border-pink-200 hover:bg-pink-100"
                 }`}
         >
             <Heart size={14} className={isInterested ? "fill-white" : ""} />
