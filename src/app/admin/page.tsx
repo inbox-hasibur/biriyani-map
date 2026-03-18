@@ -45,8 +45,8 @@ export default function AdminPage() {
     try {
       const results = await Promise.all(
         LAYERS.map(async (layer) => {
-          const { count: total } = await supabase.from(layer.key).select("*", { count: "exact", head: true });
-          const { count: visible } = await supabase.from(layer.key).select("*", { count: "exact", head: true }).eq("is_visible", true);
+          const { count: total } = await supabase!.from(layer.key).select("*", { count: "exact", head: true });
+          const { count: visible } = await supabase!.from(layer.key).select("*", { count: "exact", head: true }).eq("is_visible", true);
           return {
             key: layer.key,
             stats: {
