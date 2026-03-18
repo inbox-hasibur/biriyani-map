@@ -596,20 +596,44 @@ textarea:focus {
   background: transparent;
 }
 
-.layer-pill.active {
+/* Bigger layer pill for mobile */
+.layer-pill-lg {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  transition: color 0.3s ease, transform 0.2s ease;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  min-height: 36px;
+}
+
+.layer-pill.active,
+.layer-pill-lg.active {
   color: white;
 }
 
-.layer-pill:not(.active) {
+.layer-pill:not(.active),
+.layer-pill-lg:not(.active) {
   color: rgb(148, 163, 184);
 }
 
-.layer-pill:not(.active):hover {
+.layer-pill:not(.active):hover,
+.layer-pill-lg:not(.active):hover {
   color: rgb(71, 85, 105);
   background: rgba(255, 255, 255, 0.6);
 }
 
-.layer-pill:active {
+.layer-pill:active,
+.layer-pill-lg:active {
   transform: scale(0.95);
 }
 

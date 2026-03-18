@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Circle, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useState, useCallback } from "react";
@@ -94,13 +94,42 @@ function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
 }
 
 export default function Map() {
-  const { setMap, mode, setMode, activeLayer, selectItem, tileStyle, refetchTrigger } = useMapContext();
+  const { setMap, mode, setMode, activeLayer, selectItem, selectedItem, tileStyle, refetchTrigger } = useMapContext();
   const [bbox, setBbox] = useState<[number, number, number, number] | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const itemsQuery = useMapItems(activeLayer, bbox, refetchTrigger);
+
+  // Fetch route geometry when user location + selected item
+  useEffect(() => {
+    if (!userLocation || !selectedItem) {
+      setRouteCoords([]);
+      return;
+    }
+    const controller = new AbortController();
+    const [uLat, uLng] = userLocation;
+    const sLat = selectedItem.lat;
+    const sLng = selectedItem.lng;
+
+    fetch(`https://router.project-osrm.org/route/v1/driving/${uLng},${uLat};${sLng},${sLat}?overview=full&geometries=geojson`, {
+      signal: controller.signal,
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.routes?.[0]?.geometry?.coordinates) {
+          const coords = data.routes[0].geometry.coordinates.map(
+            (c: [number, number]) => [c[1], c[0]] as [number, number]
+          );
+          setRouteCoords(coords);
+        }
+      })
+      .catch(() => { /* ignore abort or network errors */ });
+
+    return () => controller.abort();
+  }, [userLocation, selectedItem]);
 
   async function handleCreateItem(data: LayerFormData, lat: number, lng: number) {
     setSubmitError(null);
@@ -119,13 +148,20 @@ export default function Map() {
     let insertError: string | null = null;
 
     try {
+      // Get current user (optional — allow anonymous submissions)
+      let userId: string | undefined;
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        userId = user?.id;
+      } catch { /* anonymous user */ }
+
       switch (activeLayer) {
         case "biriyani": {
           const d = data as BiriyaniFormData;
           const { error } = await supabase.from("spots").insert({
             title: d.title, description: d.description ?? null, lat, lng,
             food_type: d.foodType, time: d.time ? new Date(d.time).toISOString() : null,
-            score: 0, verified: false, is_visible: true,
+            score: 0, verified: false, is_visible: true, created_by: userId ?? null,
           });
           if (error) insertError = error.message;
           break;
@@ -134,7 +170,7 @@ export default function Map() {
           const d = data as ToiletFormData;
           const { error } = await supabase.from("toilets").insert({
             name: d.name, lat, lng, is_paid: d.isPaid, has_water: d.hasWater,
-            notes: d.notes ?? null, rating_avg: 0, rating_count: 0, score: 0, is_visible: true,
+            notes: d.notes ?? null, rating_avg: 0, rating_count: 0, score: 0, is_visible: true, created_by: userId ?? null,
           });
           if (error) insertError = error.message;
           break;
@@ -143,7 +179,7 @@ export default function Map() {
           const d = data as GoodsFormData;
           const { error } = await supabase.from("goods_prices").insert({
             product_name: d.productName, price: d.price, unit: d.unit, shop_name: d.shopName,
-            lat, lng, score: 0, is_visible: true,
+            lat, lng, score: 0, is_visible: true, created_by: userId ?? null,
           });
           if (error) insertError = error.message;
           break;
@@ -152,7 +188,7 @@ export default function Map() {
           const d = data as ViolenceFormData;
           const { error } = await supabase.from("violence_reports").insert({
             title: d.title, description: d.description ?? null, incident_type: d.incidentType,
-            lat, lng, upvotes: 0, downvotes: 0, score: 0, is_visible: true,
+            lat, lng, upvotes: 0, downvotes: 0, score: 0, is_visible: true, created_by: userId ?? null,
           });
           if (error) insertError = error.message;
           break;
@@ -231,6 +267,20 @@ export default function Map() {
         </>
       )}
 
+      {/* Route geometry line */}
+      {routeCoords.length > 1 && (
+        <Polyline
+          positions={routeCoords}
+          pathOptions={{
+            color: "#3b82f6",
+            weight: 4,
+            opacity: 0.7,
+            dashArray: "8, 12",
+            lineCap: "round",
+          }}
+        />
+      )}
+
       {/* Show drop pin in add mode */}
       {selectedPos && mode === "addSpot" && (
         <Marker position={selectedPos} icon={dropPinIcon} />
@@ -277,7 +327,7 @@ function UserLocationTracker({ onLocationUpdate }: { onLocationUpdate: (pos: [nu
         const loc: [number, number] = [pos.coords.latitude, pos.coords.longitude];
         onLocationUpdate(loc);
       },
-      () => { }, // Silently fail initially
+      (err) => { console.warn("[UniMap] Geolocation error:", err.message); },
       { enableHighAccuracy: true, timeout: 10000 }
     );
 
@@ -286,7 +336,7 @@ function UserLocationTracker({ onLocationUpdate }: { onLocationUpdate: (pos: [nu
       (pos) => {
         onLocationUpdate([pos.coords.latitude, pos.coords.longitude]);
       },
-      () => { },
+      (err) => { console.warn("[UniMap] Watch position error:", err.message); },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
 

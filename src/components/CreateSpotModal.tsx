@@ -24,6 +24,7 @@ export default function CreateSpotModal({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [locationName, setLocationName] = useState<string>("");
   const formRef = useRef<HTMLDivElement>(null);
   const meta = LAYER_META[activeLayer];
 
@@ -49,6 +50,27 @@ export default function CreateSpotModal({
 
   // Clear local error when parent error changes
   useEffect(() => { if (error) setLocalError(error); }, [error]);
+
+  // Reverse geocode to get location name
+  useEffect(() => {
+    if (!isOpen) return;
+    setLocationName("");
+    const controller = new AbortController();
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18`, {
+      headers: { "User-Agent": "UniMap/1.0" },
+      signal: controller.signal,
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data?.display_name) {
+          // Take first 2-3 parts for a concise name
+          const parts = data.display_name.split(",").map((s: string) => s.trim());
+          setLocationName(parts.slice(0, 3).join(", "));
+        }
+      })
+      .catch(() => { /* ignore */ });
+    return () => controller.abort();
+  }, [lat, lng, isOpen]);
 
   if (!isOpen) return null;
 
@@ -102,37 +124,37 @@ export default function CreateSpotModal({
     <>
       {/* ── Bottom Sheet — sits above mobile nav ── */}
       <div className="fixed bottom-0 left-0 right-0 z-[9999] md:left-[204px] animate-slide-up pointer-events-auto" style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}>
-        <div ref={formRef} className="create-sheet mx-auto max-w-lg md:mb-0 mb-[105px]">
+        <div ref={formRef} className="create-sheet mx-auto max-w-lg md:mb-0 mb-[120px]">
           {/* Drag handle */}
-          <div className="flex justify-center pt-2.5 pb-1">
+          <div className="flex justify-center pt-3 pb-1.5">
             <div className="w-10 h-1 rounded-full bg-slate-300 hover:bg-slate-400 transition-colors" />
           </div>
 
           {/* Header */}
           <div className="px-4 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-7 h-7 md:w-9 md:h-9 rounded-xl ${meta.accentBg} flex items-center justify-center text-base md:text-lg shadow-md animate-bounce-in`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 md:w-10 md:h-10 rounded-xl ${meta.accentBg} flex items-center justify-center text-lg md:text-xl shadow-md animate-bounce-in`}>
                 {meta.emoji}
               </div>
               <div>
-                <span className="text-xs md:text-sm font-bold text-slate-800">{meta.addLabel}</span>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
-                  <MapPin size={9} />
-                  {lat.toFixed(4)}, {lng.toFixed(4)}
+                <span className="text-sm md:text-base font-bold text-slate-800">{meta.addLabel}</span>
+                <div className="flex items-center gap-1 text-xs text-slate-400 font-medium">
+                  <MapPin size={11} />
+                  {locationName || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
                 </div>
               </div>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-all hover:rotate-90 duration-200" aria-label="Close">
-              <X size={16} className="text-slate-400" />
+              <X size={18} className="text-slate-400" />
             </button>
           </div>
 
           {/* Scrollable form area for mobile */}
-          <div className="max-h-[40vh] md:max-h-[50vh] overflow-y-auto scrollbar-hide">
+          <div className="max-h-[45vh] md:max-h-[50vh] overflow-y-auto scrollbar-hide">
             {/* Error */}
             {displayError && (
-              <div className="mx-4 mb-2 flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 rounded-xl px-3 py-2.5 text-xs animate-fade-up">
-                <AlertCircle size={13} className="mt-0.5 shrink-0 animate-pulse" />
+              <div className="mx-4 mb-2 flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 rounded-xl px-3 py-3 text-sm animate-fade-up">
+                <AlertCircle size={16} className="mt-0.5 shrink-0 animate-pulse" />
                 <div>
                   <span className="font-semibold">Error: </span>
                   <span>{displayError}</span>
@@ -142,16 +164,16 @@ export default function CreateSpotModal({
 
             {/* Success */}
             {success && (
-              <div className="mx-4 mb-2 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-3 py-2.5 text-xs animate-bounce-in">
-                <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center animate-scale-in">
-                  <Check size={12} className="text-white" />
+              <div className="mx-4 mb-2 flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-3 py-3 text-sm animate-bounce-in">
+                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center animate-scale-in">
+                  <Check size={14} className="text-white" />
                 </div>
                 <span className="font-semibold">Added successfully!</span>
               </div>
             )}
 
-            {/* Compact form */}
-            <form onSubmit={handleSubmit} className="px-3 md:px-4 pb-3 md:pb-4 space-y-2.5">
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-3">
               {activeLayer === "biriyani" && (
                 <>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title *" className={inpCls(meta.accentRing)} required />
@@ -203,12 +225,12 @@ export default function CreateSpotModal({
               <button
                 type="submit"
                 disabled={loading || !isValid()}
-                className={`w-full ${meta.ctaClass} py-3 md:py-3.5 rounded-xl font-bold text-xs md:text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] flex items-center justify-center gap-2 hover-lift`}
+                className={`w-full ${meta.ctaClass} py-3.5 md:py-4 rounded-xl font-bold text-sm md:text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] flex items-center justify-center gap-2 hover-lift min-h-[48px]`}
               >
                 {loading ? (
-                  <><span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" /> Saving...</>
+                  <><span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Saving...</>
                 ) : success ? (
-                  <><Check size={16} className="animate-bounce-in" /> Done!</>
+                  <><Check size={18} className="animate-bounce-in" /> Done!</>
                 ) : (
                   `${meta.addLabel} ${meta.emoji}`
                 )}
@@ -221,5 +243,5 @@ export default function CreateSpotModal({
   );
 }
 
-const inpCls = (ring: string) => `w-full px-2.5 md:px-3 py-2 md:py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-xs md:text-sm bg-white placeholder:text-slate-400 transition-all focus:shadow-md focus:border-transparent`;
-const pillCls = "w-full px-2.5 md:px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-semibold border transition-all active:scale-95 text-center hover:shadow-sm";
+const inpCls = (ring: string) => `w-full px-3 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 ${ring} text-sm bg-white placeholder:text-slate-400 transition-all focus:shadow-md focus:border-transparent`;
+const pillCls = "w-full px-3 py-3 rounded-xl text-sm font-semibold border transition-all active:scale-95 text-center hover:shadow-sm min-h-[44px]";

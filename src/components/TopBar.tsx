@@ -23,7 +23,6 @@ function AnimatedCount({ value, loading }: { value: number; loading: boolean }) 
   useEffect(() => {
     if (value !== prevRef.current) {
       setChanged(true);
-      // Simple count-up animation
       const start = prevRef.current;
       const diff = value - start;
       const steps = Math.min(Math.abs(diff), 10);
@@ -159,15 +158,15 @@ export default function TopBar() {
         )}
       </div>
 
-      {/* ── Mobile TopBar (compact) ── */}
-      <div className="md:hidden absolute top-1.5 left-1.5 right-1.5 z-[1000] pointer-events-none">
-        <div className="flex items-center gap-1">
+      {/* ── Mobile TopBar (BIGGER for mobile) ── */}
+      <div className="md:hidden absolute top-2 left-2 right-2 z-[1000] pointer-events-none">
+        <div className="flex items-center gap-1.5">
           <form
             onSubmit={handleSearch}
-            className={`topbar-card search-focus-glow pointer-events-auto flex items-center px-2 py-1.5 gap-1.5 flex-1 rounded-xl transition-all duration-300 ${searchFocused ? "ring-2 ring-blue-400/20 shadow-md animate-glow-pulse" : ""
+            className={`topbar-card search-focus-glow pointer-events-auto flex items-center px-3 py-2.5 gap-2 flex-1 rounded-xl transition-all duration-300 ${searchFocused ? "ring-2 ring-blue-400/20 shadow-md animate-glow-pulse" : ""
               }`}
           >
-            <Search size={11} className={`shrink-0 transition-colors duration-300 ${searchFocused ? "text-blue-500" : "text-slate-400"}`} />
+            <Search size={14} className={`shrink-0 transition-colors duration-300 ${searchFocused ? "text-blue-500" : "text-slate-400"}`} />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -175,29 +174,29 @@ export default function TopBar() {
               onBlur={() => setSearchFocused(false)}
               type="text"
               placeholder={meta.searchHint}
-              className="bg-transparent outline-none text-slate-700 text-[10px] font-medium w-full placeholder:text-slate-400 min-w-0"
+              className="bg-transparent outline-none text-slate-700 text-sm font-medium w-full placeholder:text-slate-400 min-w-0"
             />
             <button type="button" onClick={handleLocate} aria-label="Locate me" className="shrink-0">
-              <MapPin size={11} className={meta.accent} />
+              <MapPin size={16} className={meta.accent} />
             </button>
           </form>
 
-          {/* Compact Stats + Time */}
-          <div className="topbar-card pointer-events-auto bg-slate-900/95 text-white px-1.5 py-1 rounded-xl flex items-center gap-1 shrink-0">
-            <span className="text-[9px] font-bold"><AnimatedCount value={totalCount} loading={allItemsQuery.isLoading} /></span>
-            <span className="text-[8px] text-slate-400">{meta.emoji}</span>
-            <div className="w-px h-2.5 bg-slate-700" />
-            <span className="text-[7px] text-slate-400 font-medium timestamp">{timeStr}</span>
+          {/* Compact Stats + Time — BIGGER */}
+          <div className="topbar-card pointer-events-auto bg-slate-900/95 text-white px-2.5 py-2 rounded-xl flex items-center gap-1.5 shrink-0">
+            <span className="text-xs font-bold"><AnimatedCount value={totalCount} loading={allItemsQuery.isLoading} /></span>
+            <span className="text-xs text-slate-400">{meta.emoji}</span>
+            <div className="w-px h-3 bg-slate-700" />
+            <span className="text-[10px] text-slate-400 font-medium timestamp">{timeStr}</span>
           </div>
         </div>
 
-        {/* Mobile Add Banner */}
+        {/* Mobile Add Banner — BIGGER */}
         {mode === "addSpot" && (
-          <div className={`topbar-card pointer-events-auto flex items-center gap-1.5 px-2 py-1.5 rounded-xl mt-1 ${meta.accentLight} animate-fade-up`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${meta.accentBg} animate-pulse shrink-0`} />
-            <p className="text-[9px] font-medium flex-1">{meta.addBanner}</p>
-            <button onClick={() => setMode("browse")} className="p-0.5 rounded-lg transition shrink-0" aria-label="Cancel">
-              <X size={10} />
+          <div className={`topbar-card pointer-events-auto flex items-center gap-2 px-3 py-2.5 rounded-xl mt-1.5 ${meta.accentLight} animate-fade-up`}>
+            <div className={`w-2 h-2 rounded-full ${meta.accentBg} animate-pulse shrink-0`} />
+            <p className="text-xs font-medium flex-1">{meta.addBanner}</p>
+            <button onClick={() => setMode("browse")} className="p-1 rounded-lg transition shrink-0" aria-label="Cancel">
+              <X size={14} />
             </button>
           </div>
         )}

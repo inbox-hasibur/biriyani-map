@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Navigation, Clock, UtensilsCrossed, Star, ShoppingBasket, AlertTriangle, ExternalLink, Heart, Trash2 } from "lucide-react";
+import { X, Navigation, Clock, UtensilsCrossed, Star, ShoppingBasket, AlertTriangle, ExternalLink, Heart, Trash2, Edit3 } from "lucide-react";
 import { useMapContext, LAYER_META } from "./MapContext";
 import type { BiriyaniSpot, ToiletSpot, GoodsPrice, ViolenceReport } from "@/hooks/useMapItems";
 import { getTrustMeta } from "@/lib/trustLevel";
 import VotingUI from "./VotingUI";
+import TimeCountdown from "./TimeCountdown";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -66,6 +67,26 @@ export default function SpotDetailSheet() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [locationName, setLocationName] = useState("");
+
+    // Reverse geocode when item is selected
+    useEffect(() => {
+        if (!selectedItem) { setLocationName(""); return; }
+        const controller = new AbortController();
+        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${selectedItem.lat}&lon=${selectedItem.lng}&format=json&zoom=18`, {
+            headers: { "User-Agent": "UniMap/1.0" },
+            signal: controller.signal,
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data?.display_name) {
+                    const parts = data.display_name.split(",").map((s: string) => s.trim());
+                    setLocationName(parts.slice(0, 3).join(", "));
+                }
+            })
+            .catch(() => { /* ignore */ });
+        return () => controller.abort();
+    }, [selectedItem]);
 
     if (!selectedItem) return null;
     const meta = LAYER_META[activeLayer];
@@ -77,7 +98,6 @@ export default function SpotDetailSheet() {
 
         try {
             if (!supabase) {
-                // Dev mock — simulate delete
                 console.log(`[dev mock] Delete ${activeLayer}:`, selectedItem.id);
                 await new Promise((r) => setTimeout(r, 300));
             } else {
@@ -124,18 +144,24 @@ export default function SpotDetailSheet() {
                         {activeLayer === "violence" && <ViolenceDetail item={selectedItem as ViolenceReport} />}
                     </div>
 
-                    {/* Timestamp + Coordinates + Actions */}
+                    {/* Location Name + Timestamp + Coordinates + Actions */}
                     <div className="px-5 mt-2 flex items-center gap-2 flex-wrap">
+                        {locationName && (
+                            <div className="inline-flex items-center gap-1.5 text-xs font-medium bg-green-50 text-green-600 px-2.5 py-1.5 rounded-lg">
+                                <Navigation size={10} />
+                                {locationName}
+                            </div>
+                        )}
                         {"created_at" in selectedItem && selectedItem.created_at && (
                             <div
-                                className="inline-flex items-center gap-1.5 text-[11px] font-medium bg-purple-50 text-purple-600 px-2.5 py-1.5 rounded-lg timestamp cursor-help"
+                                className="inline-flex items-center gap-1.5 text-xs font-medium bg-purple-50 text-purple-600 px-2.5 py-1.5 rounded-lg timestamp cursor-help"
                                 title={absoluteTime(selectedItem.created_at as string)}
                             >
                                 <Clock size={10} />
                                 {relativeTime(selectedItem.created_at as string)}
                             </div>
                         )}
-                        <div className="inline-flex items-center gap-1.5 text-[11px] font-medium bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg">
+                        <div className="inline-flex items-center gap-1.5 text-xs font-medium bg-slate-100 text-slate-500 px-2.5 py-1.5 rounded-lg">
                             <Navigation size={10} />
                             {selectedItem.lat.toFixed(4)}, {selectedItem.lng.toFixed(4)}
                         </div>
@@ -143,7 +169,7 @@ export default function SpotDetailSheet() {
                             href={`https://www.google.com/maps?q=${selectedItem.lat},${selectedItem.lng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-medium bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-blue-100 transition hover-lift"
+                            className="inline-flex items-center gap-1 text-xs font-medium bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-blue-100 transition hover-lift"
                         >
                             <ExternalLink size={10} />
                             Google Maps
@@ -241,7 +267,10 @@ function BiriyaniDetail({ item }: { item: BiriyaniSpot }) {
     const trust = getTrustMeta(item.score);
     return (
         <>
-            <span className="trust-badge mb-2 inline-block animate-scale-in" style={{ background: trust.fill }}>{trust.label}</span>
+            <div className="flex items-center gap-2 mb-2">
+                <span className="trust-badge inline-block animate-scale-in" style={{ background: trust.fill }}>{trust.label}</span>
+                {item.time && <TimeCountdown time={item.time} />}
+            </div>
             <h2 className="text-lg font-bold text-slate-800 leading-tight pr-8">{item.title}</h2>
             {item.description && <p className="text-sm text-slate-500 mt-1 leading-relaxed">{item.description}</p>}
             <div className="flex flex-wrap gap-2 mt-2.5">
@@ -321,7 +350,7 @@ function ViolenceDetail({ item }: { item: ViolenceReport }) {
             <h2 className="text-lg font-bold text-slate-800 leading-tight pr-8">{item.title}</h2>
             {item.description && <p className="text-sm text-slate-500 mt-1 leading-relaxed">{item.description}</p>}
             {item.created_at && (
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mt-2 timestamp" title={absoluteTime(item.created_at)}>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-2 timestamp" title={absoluteTime(item.created_at)}>
                     <Clock size={11} />
                     Reported {relativeTime(item.created_at)}
                 </div>
@@ -333,7 +362,7 @@ function ViolenceDetail({ item }: { item: ViolenceReport }) {
 /* ── Shared Chip ── */
 function Chip({ icon, bg, children }: { icon?: React.ReactNode; bg: string; children: React.ReactNode }) {
     return (
-        <div className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg ${bg} animate-fade-up`}>
+        <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg ${bg} animate-fade-up`}>
             {icon}
             {children}
         </div>

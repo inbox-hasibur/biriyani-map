@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { UtensilsCrossed, PlusCircle, User, Locate, ShoppingBasket, AlertTriangle, Droplets, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Navigation, X, Clock } from "lucide-react";
+import { UtensilsCrossed, PlusCircle, User, Locate, ShoppingBasket, AlertTriangle, Droplets, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Navigation, X, Clock, LogIn } from "lucide-react";
 import { useMapContext, LAYER_META, LAYER_ORDER, MapLayer } from "./MapContext";
 import { useMapItems, MapItem } from "@/hooks/useMapItems";
 import { formatDistanceToNow } from "date-fns";
@@ -25,10 +25,10 @@ export default function Sidebar() {
   }
 
   const layerIcons: Record<MapLayer, React.ReactNode> = {
-    biriyani: <UtensilsCrossed size={14} />,
-    toilet: <Droplets size={14} />,
-    goods: <ShoppingBasket size={14} />,
-    violence: <AlertTriangle size={14} />,
+    biriyani: <UtensilsCrossed size={16} />,
+    toilet: <Droplets size={16} />,
+    goods: <ShoppingBasket size={16} />,
+    violence: <AlertTriangle size={16} />,
   };
 
   function handleItemClick(item: MapItem) {
@@ -96,39 +96,40 @@ export default function Sidebar() {
               <Locate size={14} className="shrink-0" />
               {!collapsed && <span className="text-xs font-medium">My Location</span>}
             </button>
-            <button className={`group relative flex items-center gap-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"}`}
-              aria-label="Profile">
-              <User size={14} className="shrink-0" />
-              {!collapsed && <span className="text-xs font-medium">Profile</span>}
-            </button>
+            <a href="/login"
+              className={`group relative flex items-center gap-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"}`}
+              aria-label="Login">
+              <LogIn size={14} className="shrink-0" />
+              {!collapsed && <span className="text-xs font-medium">Login</span>}
+            </a>
           </div>
         </div>
       </div>
 
       {/* ═══════════════════════════════════════ */}
-      {/* ── Mobile Bottom Nav (compact) ── */}
+      {/* ── Mobile Bottom Nav (LARGER for mobile) ── */}
       {/* ═══════════════════════════════════════ */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[1000] pointer-events-none">
 
         {/* ── Nearby List Panel ── */}
         {listOpen && (
           <div className="pointer-events-auto animate-slide-up">
-            <div className="nearby-panel mx-1.5 mb-0.5 rounded-2xl overflow-hidden max-h-[50vh] flex flex-col">
-              <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs">{meta.emoji}</span>
-                  <span className="text-[10px] font-bold text-slate-800">Nearby {meta.statLabel}</span>
-                  <span className="text-[8px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full animate-count-up">{items.length}</span>
+            <div className="nearby-panel mx-2 mb-1 rounded-2xl overflow-hidden max-h-[50vh] flex flex-col">
+              <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{meta.emoji}</span>
+                  <span className="text-xs font-bold text-slate-800">Nearby {meta.statLabel}</span>
+                  <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full animate-count-up">{items.length}</span>
                 </div>
-                <button onClick={() => setListOpen(false)} className="p-0.5 hover:bg-slate-100 rounded-lg transition">
-                  <X size={12} className="text-slate-400" />
+                <button onClick={() => setListOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg transition">
+                  <X size={16} className="text-slate-400" />
                 </button>
               </div>
               <div className="overflow-y-auto flex-1 divide-y divide-slate-50">
                 {items.length === 0 ? (
-                  <div className="px-3 py-5 text-center">
-                    <p className="text-[10px] text-slate-400 font-medium">No {meta.statLabel.toLowerCase()} found nearby</p>
-                    <p className="text-[9px] text-slate-300 mt-0.5">Be the first to add one!</p>
+                  <div className="px-4 py-6 text-center">
+                    <p className="text-xs text-slate-400 font-medium">No {meta.statLabel.toLowerCase()} found nearby</p>
+                    <p className="text-[10px] text-slate-300 mt-1">Be the first to add one!</p>
                   </div>
                 ) : items.map((item) => (
                   <NearbyListItem key={item.id} item={item} layer={activeLayer} onClick={() => handleItemClick(item)} />
@@ -138,29 +139,29 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* ── Action Row (compact) ── */}
-        <div className="pointer-events-auto bg-gradient-to-t from-white via-white/90 to-transparent pt-1.5">
-          <div className="flex items-center justify-center gap-1.5 px-2.5 mb-1">
+        {/* ── Action Row (BIGGER for mobile) ── */}
+        <div className="pointer-events-auto bg-gradient-to-t from-white via-white/90 to-transparent pt-2">
+          <div className="flex items-center justify-center gap-2 px-3 mb-1.5">
             <button onClick={handleLocate}
-              className="px-2.5 py-1.5 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 active:scale-95 transition-all flex items-center gap-1 text-[9px] font-semibold">
-              <Locate size={11} className="text-blue-500" />
+              className="px-3.5 py-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold min-h-[44px]">
+              <Locate size={16} className="text-blue-500" />
               <span>Near Me</span>
             </button>
 
             <button onClick={() => setMode(mode === "addSpot" ? "browse" : "addSpot")}
-              className={`px-3 py-1.5 rounded-xl shadow-md font-bold text-[10px] flex items-center gap-1 active:scale-95 transition-all ${mode === "addSpot" ? "bg-slate-900 text-white" : meta.ctaClass}`}>
-              <PlusCircle size={12} className={`transition-transform duration-300 ${mode === "addSpot" ? "rotate-45" : ""}`} />
+              className={`px-4 py-2.5 rounded-xl shadow-md font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all min-h-[44px] ${mode === "addSpot" ? "bg-slate-900 text-white" : meta.ctaClass}`}>
+              <PlusCircle size={16} className={`transition-transform duration-300 ${mode === "addSpot" ? "rotate-45" : ""}`} />
               <span>{mode === "addSpot" ? "Cancel" : meta.addLabel}</span>
             </button>
 
             <button onClick={() => setListOpen(!listOpen)}
-              className={`px-2.5 py-1.5 rounded-xl shadow-sm border border-slate-100 active:scale-95 transition-all flex items-center gap-1 text-[9px] font-semibold ${listOpen ? `${meta.accentBg} text-white border-transparent` : "bg-white text-slate-600"}`}>
-              {listOpen ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
+              className={`px-3.5 py-2.5 rounded-xl shadow-sm border border-slate-100 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold min-h-[44px] ${listOpen ? `${meta.accentBg} text-white border-transparent` : "bg-white text-slate-600"}`}>
+              {listOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               <span>List</span>
             </button>
           </div>
 
-          {/* ── Animated Layer Pill Slider (mobile) ── */}
+          {/* ── Animated Layer Pill Slider (mobile — BIGGER) ── */}
           <MobileLayerSlider activeLayer={activeLayer} onLayerChange={(l) => { setActiveLayer(l); setListOpen(false); }} />
         </div>
       </div>
@@ -168,7 +169,7 @@ export default function Sidebar() {
   );
 }
 
-/* ── Animated Mobile Layer Slider ── */
+/* ── Animated Mobile Layer Slider (BIGGER) ── */
 function MobileLayerSlider({ activeLayer, onLayerChange }: { activeLayer: MapLayer; onLayerChange: (l: MapLayer) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -193,7 +194,7 @@ function MobileLayerSlider({ activeLayer, onLayerChange }: { activeLayer: MapLay
   const activeMeta = LAYER_META[activeLayer];
 
   return (
-    <div className="flex justify-center bg-white/98 border-t border-slate-100 px-2 py-1 pb-safe">
+    <div className="flex justify-center bg-white/98 border-t border-slate-100 px-3 py-1.5 pb-safe">
       <div ref={trackRef} className="layer-slider-track relative">
         {/* Animated background indicator */}
         <div
@@ -209,9 +210,9 @@ function MobileLayerSlider({ activeLayer, onLayerChange }: { activeLayer: MapLay
               key={layerId}
               ref={(el) => { pillRefs.current[layerId] = el; }}
               onClick={() => onLayerChange(layerId)}
-              className={`layer-pill ${isActive ? "active" : ""}`}
+              className={`layer-pill-lg ${isActive ? "active" : ""}`}
             >
-              <span className="text-[10px]">{lm.emoji}</span>
+              <span className="text-sm">{lm.emoji}</span>
               <span>{lm.label}</span>
             </button>
           );
@@ -221,7 +222,7 @@ function MobileLayerSlider({ activeLayer, onLayerChange }: { activeLayer: MapLay
   );
 }
 
-/* ── Nearby List Item (compact) ── */
+/* ── Nearby List Item (BIGGER for mobile) ── */
 function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLayer; onClick: () => void }) {
   const meta = LAYER_META[layer];
 
@@ -254,7 +255,7 @@ function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLay
     if (layer === "toilet") {
       const t = item as { is_paid?: boolean; has_water?: boolean };
       badges.push(
-        <span key="paid" className={`text-[7px] font-bold px-1 py-0.5 rounded ${t.is_paid ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
+        <span key="paid" className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${t.is_paid ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
           {t.is_paid ? "Paid" : "Free"}
         </span>
       );
@@ -262,7 +263,7 @@ function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLay
     if (layer === "goods") {
       const g = item as { price?: number; unit?: string };
       if (g.price) badges.push(
-        <span key="price" className="text-[7px] font-bold px-1 py-0.5 rounded bg-emerald-100 text-emerald-700">৳{g.price}/{g.unit}</span>
+        <span key="price" className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">৳{g.price}/{g.unit}</span>
       );
     }
     return badges;
@@ -271,27 +272,27 @@ function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLay
   const timeStr = getTime();
 
   return (
-    <button onClick={onClick} className="stagger-item w-full text-left px-2.5 py-2 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-center gap-2">
-      <div className={`w-6 h-6 rounded-lg ${meta.accentBg}/10 flex items-center justify-center text-[10px] shrink-0`}>
+    <button onClick={onClick} className="stagger-item w-full text-left px-3 py-3 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-center gap-2.5 min-h-[52px]">
+      <div className={`w-8 h-8 rounded-lg ${meta.accentBg}/10 flex items-center justify-center text-sm shrink-0`}>
         {meta.emoji}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-semibold text-slate-800 truncate">{getTitle()}</p>
-        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          <span className="text-[9px] text-slate-400 truncate">{getSubtitle()}</span>
+        <p className="text-xs font-semibold text-slate-800 truncate">{getTitle()}</p>
+        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+          <span className="text-[11px] text-slate-400 truncate">{getSubtitle()}</span>
           {getBadges()}
           {timeStr && (
-            <span className="inline-flex items-center gap-0.5 text-[7px] font-medium text-slate-400 timestamp">
-              <Clock size={6} />{timeStr}
+            <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-slate-400 timestamp">
+              <Clock size={8} />{timeStr}
             </span>
           )}
         </div>
       </div>
       <div className="flex flex-col items-end shrink-0">
-        <span className={`text-[9px] font-bold ${item.score >= 5 ? "text-green-600" : item.score >= 0 ? "text-slate-500" : "text-red-500"}`}>
+        <span className={`text-[11px] font-bold ${item.score >= 5 ? "text-green-600" : item.score >= 0 ? "text-slate-500" : "text-red-500"}`}>
           {item.score > 0 ? `+${item.score}` : item.score}
         </span>
-        <Navigation size={9} className="text-slate-300" />
+        <Navigation size={11} className="text-slate-300" />
       </div>
     </button>
   );

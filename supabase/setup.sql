@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY,
   email text,
   display_name text,
+  role text DEFAULT 'user',
   created_at timestamptz DEFAULT now()
 );
 
@@ -254,3 +255,92 @@ FOR EACH ROW EXECUTE FUNCTION auto_hide_on_negative_score();
 
 -- Enable pgcrypto extension
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- ═══════════════════════════════════════════
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ═══════════════════════════════════════════
+
+-- Enable RLS on all tables
+ALTER TABLE spots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE toilets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goods_prices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE violence_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE spot_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE toilet_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goods_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE violence_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE toilet_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE violence_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- SPOTS: Anyone can read visible, anyone can insert, owners can update/delete
+CREATE POLICY "spots_select" ON spots FOR SELECT USING (is_visible = true);
+CREATE POLICY "spots_insert" ON spots FOR INSERT WITH CHECK (true);
+CREATE POLICY "spots_update" ON spots FOR UPDATE USING (auth.uid() = created_by);
+CREATE POLICY "spots_delete" ON spots FOR DELETE USING (auth.uid() = created_by);
+
+-- TOILETS
+CREATE POLICY "toilets_select" ON toilets FOR SELECT USING (is_visible = true);
+CREATE POLICY "toilets_insert" ON toilets FOR INSERT WITH CHECK (true);
+CREATE POLICY "toilets_update" ON toilets FOR UPDATE USING (auth.uid() = created_by);
+CREATE POLICY "toilets_delete" ON toilets FOR DELETE USING (auth.uid() = created_by);
+
+-- GOODS
+CREATE POLICY "goods_select" ON goods_prices FOR SELECT USING (is_visible = true);
+CREATE POLICY "goods_insert" ON goods_prices FOR INSERT WITH CHECK (true);
+CREATE POLICY "goods_update" ON goods_prices FOR UPDATE USING (auth.uid() = created_by);
+CREATE POLICY "goods_delete" ON goods_prices FOR DELETE USING (auth.uid() = created_by);
+
+-- VIOLENCE
+CREATE POLICY "violence_select" ON violence_reports FOR SELECT USING (is_visible = true);
+CREATE POLICY "violence_insert" ON violence_reports FOR INSERT WITH CHECK (true);
+CREATE POLICY "violence_update" ON violence_reports FOR UPDATE USING (auth.uid() = created_by);
+CREATE POLICY "violence_delete" ON violence_reports FOR DELETE USING (auth.uid() = created_by);
+
+-- VOTES: Anyone can read, authenticated users can vote
+CREATE POLICY "spot_votes_select" ON spot_votes FOR SELECT USING (true);
+CREATE POLICY "spot_votes_insert" ON spot_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "spot_votes_delete" ON spot_votes FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "toilet_votes_select" ON toilet_votes FOR SELECT USING (true);
+CREATE POLICY "toilet_votes_insert" ON toilet_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "toilet_votes_delete" ON toilet_votes FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "goods_votes_select" ON goods_votes FOR SELECT USING (true);
+CREATE POLICY "goods_votes_insert" ON goods_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "goods_votes_delete" ON goods_votes FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "violence_votes_select" ON violence_votes FOR SELECT USING (true);
+CREATE POLICY "violence_votes_insert" ON violence_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "violence_votes_delete" ON violence_votes FOR DELETE USING (auth.uid() = user_id);
+
+-- REVIEWS / COMMENTS
+CREATE POLICY "toilet_reviews_select" ON toilet_reviews FOR SELECT USING (true);
+CREATE POLICY "toilet_reviews_insert" ON toilet_reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "violence_comments_select" ON violence_comments FOR SELECT USING (true);
+CREATE POLICY "violence_comments_insert" ON violence_comments FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- USERS: Users can read/update their own profile
+CREATE POLICY "users_select" ON users FOR SELECT USING (true);
+CREATE POLICY "users_insert" ON users FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "users_update" ON users FOR UPDATE USING (auth.uid() = id);
+
+-- ═══════════════════════════════════════════
+-- AUTH TRIGGER: Auto-create user profile on signup
+-- ═══════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.users (id, email, display_name, role)
+  VALUES (new.id, new.email, COALESCE(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)), 'user')
+  ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
