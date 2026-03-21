@@ -22,7 +22,7 @@ const LAYERS: { key: LayerKey; label: string; emoji: string; icon: React.ReactNo
 ];
 
 export default function AdminPage() {
-  const { user, loading: authLoading, signOut } = useAuth();
+  const { user, loading: authLoading, signOut, isLocalAdmin, adminSignOut } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<Record<LayerKey, LayerStats>>({
     spots: { total: 0, visible: 0, hidden: 0 },
@@ -36,11 +36,46 @@ export default function AdminPage() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const isAuthorized = !authLoading && user && isAdmin(user.email);
+  const isAuthorized = !authLoading && (isLocalAdmin || (user && isAdmin(user.email)));
+
+  // Mock data for when Supabase is not available
+  const MOCK_STATS: Record<LayerKey, LayerStats> = {
+    spots: { total: 3, visible: 3, hidden: 0 },
+    toilets: { total: 3, visible: 3, hidden: 0 },
+    goods_prices: { total: 3, visible: 3, hidden: 0 },
+    violence_reports: { total: 3, visible: 3, hidden: 0 },
+  };
+
+  const MOCK_ITEMS: Record<LayerKey, Record<string, unknown>[]> = {
+    spots: [
+      { id: "b1", title: "Biriyani at Park", lat: 23.815, lng: 90.412, score: 12, is_visible: true, created_at: "2026-03-06T10:00:00Z" },
+      { id: "b2", title: "Water Distribution", lat: 23.812, lng: 90.42, score: 7, is_visible: true, created_at: "2026-03-06T12:00:00Z" },
+      { id: "b3", title: "Tehari Event", lat: 23.808, lng: 90.415, score: 2, is_visible: true, created_at: "2026-03-07T08:00:00Z" },
+    ],
+    toilets: [
+      { id: "t1", name: "City Center Public Toilet", lat: 23.811, lng: 90.407, score: 8, is_visible: true, created_at: "2026-03-06T10:00:00Z" },
+      { id: "t2", name: "Market Toilet", lat: 23.818, lng: 90.418, score: 15, is_visible: true, created_at: "2026-03-06T12:00:00Z" },
+      { id: "t3", name: "Bus Station Restroom", lat: 23.806, lng: 90.422, score: -2, is_visible: true, created_at: "2026-03-07T08:00:00Z" },
+    ],
+    goods_prices: [
+      { id: "g1", product_name: "Tomatoes", lat: 23.813, lng: 90.409, score: 10, is_visible: true, created_at: "2026-03-06T10:00:00Z" },
+      { id: "g2", product_name: "Onions", lat: 23.817, lng: 90.414, score: 6, is_visible: true, created_at: "2026-03-06T12:00:00Z" },
+      { id: "g3", product_name: "Potatoes", lat: 23.81, lng: 90.419, score: 3, is_visible: true, created_at: "2026-03-07T08:00:00Z" },
+    ],
+    violence_reports: [
+      { id: "v1", title: "Theft near ATM", lat: 23.816, lng: 90.41, score: 13, is_visible: true, created_at: "2026-03-05T22:30:00Z" },
+      { id: "v2", title: "Harassment at bus stop", lat: 23.809, lng: 90.413, score: 6, is_visible: true, created_at: "2026-03-06T18:00:00Z" },
+      { id: "v3", title: "Vandalism of shopfront", lat: 23.814, lng: 90.424, score: 3, is_visible: true, created_at: "2026-03-07T06:00:00Z" },
+    ],
+  };
 
   // Fetch stats for all layers
   const fetchStats = useCallback(async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      // Use mock data when Supabase is not configured
+      setStats(MOCK_STATS);
+      return;
+    }
     setRefreshing(true);
     try {
       const results = await Promise.all(
@@ -65,11 +100,16 @@ export default function AdminPage() {
     } finally {
       setRefreshing(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch items for active tab
   const fetchItems = useCallback(async () => {
-    if (!supabase) return;
+    if (!supabase) {
+      // Use mock data when Supabase is not configured
+      setItems(MOCK_ITEMS[activeTab] || []);
+      return;
+    }
     setItemsLoading(true);
     try {
       const { data, error } = await supabase
@@ -84,6 +124,7 @@ export default function AdminPage() {
     } finally {
       setItemsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   useEffect(() => {
@@ -107,7 +148,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!user) {
+  if (!user && !isLocalAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <div className="text-center">
@@ -122,13 +163,13 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAdmin(user.email)) {
+  if (!isLocalAdmin && !isAdmin(user?.email)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <div className="text-center">
           <Shield size={48} className="text-red-300 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-slate-700 mb-2">Access Denied</h2>
-          <p className="text-slate-400 mb-4">Your account ({user.email}) is not an admin.</p>
+          <p className="text-slate-400 mb-4">Your account ({user?.email}) is not an admin.</p>
           <a href="/" className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition inline-block">
             Back to Map
           </a>
@@ -174,14 +215,14 @@ export default function AdminPage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-white text-xs font-black">U</div>
             <div>
               <h1 className="text-sm font-bold text-slate-800">Admin Dashboard</h1>
-              <p className="text-[10px] text-slate-400">{user.email}</p>
+              <p className="text-[10px] text-slate-400">{user?.email || (isLocalAdmin ? "Local Admin" : "")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => { fetchStats(); fetchItems(); }} className={`p-2 hover:bg-slate-100 rounded-xl transition ${refreshing ? "animate-spin" : ""}`}>
               <RefreshCw size={16} className="text-slate-500" />
             </button>
-            <button onClick={async () => { await signOut(); router.push("/"); }} className="p-2 hover:bg-red-50 rounded-xl transition text-slate-500 hover:text-red-500">
+            <button onClick={async () => { adminSignOut(); await signOut(); router.push("/"); }} className="p-2 hover:bg-red-50 rounded-xl transition text-slate-500 hover:text-red-500">
               <LogOut size={16} />
             </button>
           </div>

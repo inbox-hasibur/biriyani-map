@@ -8,9 +8,12 @@ type AuthContextValue = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isLocalAdmin: boolean;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  adminSignIn: (username: string, password: string) => { error: string | null };
+  adminSignOut: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -19,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLocalAdmin, setIsLocalAdmin] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -61,10 +65,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
+    setIsLocalAdmin(false);
+  }, []);
+
+  const adminSignIn = useCallback((username: string, password: string) => {
+    if (username === "admin" && password === "admin123") {
+      setIsLocalAdmin(true);
+      return { error: null };
+    }
+    return { error: "Invalid admin credentials" };
+  }, []);
+
+  const adminSignOut = useCallback(() => {
+    setIsLocalAdmin(false);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isLocalAdmin, signUp, signIn, signOut, adminSignIn, adminSignOut }}>
       {children}
     </AuthContext.Provider>
   );

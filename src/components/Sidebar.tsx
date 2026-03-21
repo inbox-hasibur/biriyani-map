@@ -1,19 +1,43 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { UtensilsCrossed, PlusCircle, User, Locate, ShoppingBasket, AlertTriangle, Droplets, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Navigation, X, Clock, LogIn } from "lucide-react";
+import { UtensilsCrossed, PlusCircle, User, Locate, ShoppingBasket, AlertTriangle, Droplets, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Navigation, X, Clock, LogIn, LogOut, Shield, MapPin } from "lucide-react";
 import { useMapContext, LAYER_META, LAYER_ORDER, MapLayer } from "./MapContext";
 import { useMapItems, MapItem } from "@/hooks/useMapItems";
+import { useAuth } from "@/lib/AuthProvider";
+import { isAdmin } from "@/lib/supabaseClient";
 import { formatDistanceToNow } from "date-fns";
 
 export default function Sidebar() {
   const { mode, setMode, activeLayer, setActiveLayer, map, selectItem } = useMapContext();
   const [collapsed, setCollapsed] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const meta = LAYER_META[activeLayer];
+  const { user, isLocalAdmin, signOut, adminSignOut } = useAuth();
+
+  const isLoggedIn = !!user || isLocalAdmin;
+  const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || (isLocalAdmin ? "Admin" : "");
+  const displayEmail = user?.email || (isLocalAdmin ? "admin@local" : "");
+  const showAdminLink = isAdmin(user?.email) || isLocalAdmin;
 
   const itemsQuery = useMapItems(activeLayer, undefined);
   const items = itemsQuery.data ?? [];
+
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    if (profileOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }
+  }, [profileOpen]);
 
   function handleLocate() {
     if (!map || !navigator.geolocation) return;
@@ -37,6 +61,14 @@ export default function Sidebar() {
     if (map && item.lat && item.lng) {
       map.setView([item.lat, item.lng], 17, { animate: true });
     }
+  }
+
+  async function handleLogout() {
+    setProfileOpen(false);
+    if (isLocalAdmin) {
+      adminSignOut();
+    }
+    await signOut();
   }
 
   return (
@@ -96,12 +128,90 @@ export default function Sidebar() {
               <Locate size={14} className="shrink-0" />
               {!collapsed && <span className="text-xs font-medium">My Location</span>}
             </button>
-            <a href="/login"
-              className={`group relative flex items-center gap-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"}`}
-              aria-label="Login">
-              <LogIn size={14} className="shrink-0" />
-              {!collapsed && <span className="text-xs font-medium">Login</span>}
-            </a>
+
+            {/* Auth-aware: User Profile or Login */}
+            {isLoggedIn ? (
+              <div className="relative" ref={profileRef}>
+                <button
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className={`group relative flex items-center gap-2 rounded-lg transition-all duration-200 w-full ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"} ${profileOpen ? "bg-blue-50 text-blue-600" : "text-slate-400 hover:bg-slate-50 hover:text-slate-800"}`}
+                  aria-label="User Profile"
+                >
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                  {!collapsed && <span className="text-xs font-medium truncate">{displayName}</span>}
+                  {collapsed && (
+                    <span className="absolute left-full ml-2 bg-slate-800 text-white text-[9px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-50">
+                      {displayName}
+                    </span>
+                  )}
+                </button>
+
+                {/* Profile Dropdown — Enhanced User Dashboard */}
+                {profileOpen && (
+                  <div className="profile-dropdown absolute bottom-full left-0 mb-2 w-64 rounded-xl overflow-hidden animate-fade-up z-[1001]">
+                    {/* User Header */}
+                    <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-base font-bold shadow-md border border-white/30">
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-white truncate">{displayName}</p>
+                          <p className="text-[10px] text-white/70 truncate">{displayEmail}</p>
+                        </div>
+                      </div>
+                      {/* Quick Stats */}
+                      <div className="flex items-center gap-3 mt-2.5 pt-2 border-t border-white/20">
+                        <div className="flex-1 text-center">
+                          <p className="text-sm font-bold text-white">{items.length}</p>
+                          <p className="text-[9px] text-white/60 uppercase tracking-wider">Visible</p>
+                        </div>
+                        <div className="w-px h-6 bg-white/20" />
+                        <div className="flex-1 text-center">
+                          <p className="text-sm font-bold text-white">{LAYER_ORDER.length}</p>
+                          <p className="text-[9px] text-white/60 uppercase tracking-wider">Layers</p>
+                        </div>
+                        <div className="w-px h-6 bg-white/20" />
+                        <div className="flex-1 text-center">
+                          <p className="text-sm font-bold text-white">{meta.emoji}</p>
+                          <p className="text-[9px] text-white/60 uppercase tracking-wider">Active</p>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Menu Items */}
+                    <div className="py-1 bg-white">
+                      <a href="/" className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">
+                        <MapPin size={13} className="text-blue-500" />
+                        Go to Map
+                      </a>
+                      {showAdminLink && (
+                        <a href="/admin" className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">
+                          <Shield size={13} className="text-amber-500" />
+                          Admin Dashboard
+                        </a>
+                      )}
+                      <div className="mx-3 h-px bg-slate-100 my-0.5" />
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 transition w-full text-left"
+                      >
+                        <LogOut size={13} />
+                        Log Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <a href="/login"
+                className={`group relative flex items-center gap-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"}`}
+                aria-label="Login">
+                <LogIn size={14} className="shrink-0" />
+                {!collapsed && <span className="text-xs font-medium">Login</span>}
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -159,11 +269,67 @@ export default function Sidebar() {
               {listOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               <span>List</span>
             </button>
+
+            {/* Mobile: User/Login Button */}
+            {isLoggedIn ? (
+              <button
+                onClick={() => setProfileOpen(!profileOpen)}
+                className="px-2.5 py-2.5 bg-white rounded-xl shadow-sm border border-slate-100 active:scale-95 transition-all min-h-[44px]"
+              >
+                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[9px] font-bold">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+              </button>
+            ) : (
+              <a href="/login"
+                className="px-3.5 py-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold min-h-[44px]"
+              >
+                <LogIn size={16} className="text-slate-500" />
+              </a>
+            )}
           </div>
 
           {/* ── Animated Layer Pill Slider (mobile — BIGGER) ── */}
           <MobileLayerSlider activeLayer={activeLayer} onLayerChange={(l) => { setActiveLayer(l); setListOpen(false); }} />
         </div>
+
+        {/* Mobile Profile Sheet */}
+        {profileOpen && isLoggedIn && (
+          <div className="pointer-events-auto fixed inset-0 z-[1002]" onClick={() => setProfileOpen(false)}>
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+            <div className="absolute bottom-0 left-0 right-0 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+              <div className="nearby-panel mx-2 mb-2 rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-slate-100">
+                  <div className="w-8 h-1 bg-slate-200 rounded-full mx-auto mb-3" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shadow-lg">
+                      {displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-slate-800 truncate">{displayName}</p>
+                      <p className="text-xs text-slate-400 truncate">{displayEmail}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="py-1">
+                  {showAdminLink && (
+                    <a href="/admin" className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
+                      <Shield size={16} className="text-amber-500" />
+                      Admin Dashboard
+                    </a>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 transition w-full text-left"
+                  >
+                    <LogOut size={16} />
+                    Log Out
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
