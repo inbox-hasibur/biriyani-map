@@ -230,6 +230,17 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Demo Mode Banner */}
+        {!supabase && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium flex items-center gap-2">
+            <span className="text-lg">🔶</span>
+            <div>
+              <span className="font-bold">Demo Mode</span>
+              <span className="text-amber-600 ml-1">— Supabase not connected. Showing mock data. Set <code className="bg-amber-100 px-1 rounded text-xs">NEXT_PUBLIC_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 rounded text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in Vercel.</span>
+            </div>
+          </div>
+        )}
+
         {/* Overview Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {LAYERS.map((layer) => (
