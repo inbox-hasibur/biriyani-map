@@ -183,8 +183,23 @@ const FETCHERS: Record<MapLayer, (bbox?: [number, number, number, number]) => Pr
 export function useMapItems(layer: MapLayer, bbox?: [number, number, number, number], refetchTrigger?: number) {
     return useQuery({
         queryKey: ["mapItems", layer, bbox, refetchTrigger],
-        queryFn: () => FETCHERS[layer](bbox),
-        staleTime: 5 * 1000,
-        gcTime: 10 * 60 * 1000,
+        queryFn: async () => {
+            try {
+                return await FETCHERS[layer](bbox);
+            } catch (err) {
+                // On network / RLS errors, log and return empty instead of crashing
+                if (err instanceof TypeError && err.message.includes("fetch")) {
+                    console.warn("[UniMap] Network error fetching map items:", err.message);
+                } else {
+                    console.error("[UniMap] Failed to fetch map items:", err);
+                }
+                return [] as MapItem[];
+            }
+        },
+        staleTime: 15 * 1000,          // 15s — don't refetch too aggressively
+        gcTime: 10 * 60 * 1000,        // keep in cache 10min
+        retry: 1,                       // only one retry (default is 3)
+        retryDelay: 2000,
+        refetchOnWindowFocus: false,    // don't hammer Supabase on tab focus
     });
 }

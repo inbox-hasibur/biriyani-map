@@ -94,7 +94,7 @@ function MapInstanceCapture({ onMap }: { onMap: (m: L.Map) => void }) {
 }
 
 export default function Map() {
-  const { setMap, mode, setMode, activeLayer, selectItem, selectedItem, tileStyle, refetchTrigger } = useMapContext();
+  const { setMap, mode, setMode, activeLayer, selectItem, selectedItem, tileStyle, refetchTrigger, filterLayer } = useMapContext();
   const [bbox, setBbox] = useState<[number, number, number, number] | undefined>(undefined);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPos, setSelectedPos] = useState<[number, number] | null>(null);
@@ -195,7 +195,11 @@ export default function Map() {
         }
       }
     } catch (err) {
-      insertError = err instanceof Error ? err.message : "Failed to save. Check your connection.";
+      if (err instanceof TypeError && (err.message === "Failed to fetch" || err.message.includes("fetch"))) {
+        insertError = "Network error: Could not connect to the server. Please check your internet connection and try again.";
+      } else {
+        insertError = err instanceof Error ? err.message : "Failed to save. Check your connection.";
+      }
     }
 
     if (insertError) {
@@ -210,6 +214,12 @@ export default function Map() {
   }
 
   const items = itemsQuery.data ?? [];
+  // Apply filter: when filterLayer is set and matches activeLayer, no filtering needed
+  // When filterLayer doesn't match activeLayer, items from activeLayer won't show
+  // (the TopBar handles switching the activeLayer when filter changes)
+  const filteredItems = filterLayer
+    ? items.filter((item) => item._layer === filterLayer)
+    : items;
   const tileConfig = TILE_CONFIGS[tileStyle];
 
   return (
@@ -238,6 +248,7 @@ export default function Map() {
 
       <MapEvents
         mode={mode}
+        modalOpen={modalOpen}
         setBbox={setBbox}
         setModalOpen={setModalOpen}
         setSelectedPos={setSelectedPos}
@@ -286,8 +297,8 @@ export default function Map() {
         <Marker position={selectedPos} icon={dropPinIcon} />
       )}
 
-      {/* Render markers for active layer */}
-      {items.map((item) =>
+      {/* Render markers for active layer (respects filter) */}
+      {filteredItems.map((item) =>
         item?.lat != null && item?.lng != null ? (
           <Marker
             key={`${activeLayer}-${item.id}`}
@@ -347,8 +358,9 @@ function UserLocationTracker({ onLocationUpdate }: { onLocationUpdate: (pos: [nu
   return null;
 }
 
-function MapEvents({ mode, setBbox, setModalOpen, setSelectedPos }: {
+function MapEvents({ mode, modalOpen, setBbox, setModalOpen, setSelectedPos }: {
   mode: string;
+  modalOpen: boolean;
   setBbox: (b: [number, number, number, number]) => void;
   setModalOpen: (open: boolean) => void;
   setSelectedPos: (pos: [number, number] | null) => void;
@@ -363,6 +375,8 @@ function MapEvents({ mode, setBbox, setModalOpen, setSelectedPos }: {
       setBbox([b.getSouth(), b.getWest(), b.getNorth(), b.getEast()]);
     },
     click(e) {
+      // Don't handle map clicks when the create form modal is already open
+      if (modalOpen) return;
       if (mode === "addSpot") {
         setSelectedPos([e.latlng.lat, e.latlng.lng]);
         setModalOpen(true);

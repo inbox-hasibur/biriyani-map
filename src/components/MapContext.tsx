@@ -92,6 +92,10 @@ type MapContextValue = {
   setTileStyle: (s: TileStyle) => void;
   refetchTrigger: number;
   triggerRefetch: () => void;
+  desktopListOpen: boolean;
+  setDesktopListOpen: (open: boolean) => void;
+  filterLayer: MapLayer | null;
+  setFilterLayer: (l: MapLayer | null) => void;
 };
 
 const MapContext = createContext<MapContextValue | undefined>(undefined);
@@ -103,6 +107,8 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
   const [selectedItem, setSelectedItem] = useState<MapItem | null>(null);
   const [tileStyle, setTileStyle] = useState<TileStyle>("default");
   const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const [desktopListOpen, setDesktopListOpen] = useState(false);
+  const [filterLayer, setFilterLayer] = useState<MapLayer | null>(null);
 
   const setMode = useCallback((m: AppMode) => {
     setModeRaw(m);
@@ -125,7 +131,7 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <MapContext.Provider value={{ map, setMap, mode, setMode, activeLayer, setActiveLayer, selectedItem, selectItem, tileStyle, setTileStyle, refetchTrigger, triggerRefetch }}>
+    <MapContext.Provider value={{ map, setMap, mode, setMode, activeLayer, setActiveLayer, selectedItem, selectItem, tileStyle, setTileStyle, refetchTrigger, triggerRefetch, desktopListOpen, setDesktopListOpen, filterLayer, setFilterLayer }}>
       {children}
     </MapContext.Provider>
   );

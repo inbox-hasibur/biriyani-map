@@ -1,19 +1,144 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { UtensilsCrossed, PlusCircle, User, Locate, ShoppingBasket, AlertTriangle, Droplets, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Navigation, X, Clock, LogIn } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { UtensilsCrossed, PlusCircle, Locate, ShoppingBasket, AlertTriangle, Droplets, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Navigation, X, Clock, LogIn, LogOut, Shield, MapPin, Settings } from "lucide-react";
 import { useMapContext, LAYER_META, LAYER_ORDER, MapLayer } from "./MapContext";
 import { useMapItems, MapItem } from "@/hooks/useMapItems";
+import { useAuth } from "@/lib/AuthProvider";
+import { isAdmin } from "@/lib/supabaseClient";
 import { formatDistanceToNow } from "date-fns";
+
+/* ── Portal-based profile dropdown (avoids overflow-hidden clipping) ── */
+function ProfileDropdown({
+  anchorRef,
+  open,
+  onClose,
+  displayName,
+  displayEmail,
+  showAdminLink,
+  visibleCount,
+  onLogout,
+}: {
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  open: boolean;
+  onClose: () => void;
+  displayName: string;
+  displayEmail: string;
+  showAdminLink: boolean;
+  visibleCount: number;
+  onLogout: () => void;
+}) {
+  const [style, setStyle] = useState<React.CSSProperties>({});
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Calculate position from anchor button
+  useEffect(() => {
+    if (!open || !anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setStyle({
+      position: "fixed",
+      bottom: window.innerHeight - rect.top + 8,
+      left: rect.left,
+      zIndex: 9999,
+      width: 256,
+    });
+  }, [open, anchorRef]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        anchorRef.current && !anchorRef.current.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open, onClose, anchorRef]);
+
+  if (!open) return null;
+
+  const initial = displayName.charAt(0).toUpperCase();
+
+  return createPortal(
+    <div ref={dropdownRef} style={style} className="profile-dropdown rounded-xl overflow-hidden animate-fade-up">
+      {/* Gradient header */}
+      <div className="p-3.5 bg-gradient-to-br from-blue-600 to-purple-700">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white text-lg font-bold shadow-md">
+            {initial}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-white truncate">{displayName}</p>
+            <p className="text-[11px] text-white/70 truncate">{displayEmail}</p>
+          </div>
+        </div>
+        {/* Mini stats row */}
+        <div className="flex items-center gap-0 mt-3 bg-white/10 rounded-lg overflow-hidden">
+          <div className="flex-1 py-2 text-center border-r border-white/20">
+            <p className="text-base font-bold text-white">{visibleCount}</p>
+            <p className="text-[9px] text-white/60 uppercase tracking-wider">Visible</p>
+          </div>
+          <div className="flex-1 py-2 text-center border-r border-white/20">
+            <p className="text-base font-bold text-white">{LAYER_ORDER.length}</p>
+            <p className="text-[9px] text-white/60 uppercase tracking-wider">Layers</p>
+          </div>
+          <div className="flex-1 py-2 text-center">
+            <p className="text-base font-bold text-white">🌍</p>
+            <p className="text-[9px] text-white/60 uppercase tracking-wider">UniMap</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Menu */}
+      <div className="bg-white py-1">
+        <a href="/" className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition font-medium">
+          <MapPin size={14} className="text-blue-500 shrink-0" />
+          Go to Map
+        </a>
+        {showAdminLink && (
+          <a href="/admin" className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition font-medium">
+            <Shield size={14} className="text-amber-500 shrink-0" />
+            Admin Dashboard
+          </a>
+        )}
+        <div className="mx-3.5 h-px bg-slate-100 my-1" />
+        <button
+          onClick={onLogout}
+          className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-500 hover:bg-red-50 transition w-full text-left font-medium"
+        >
+          <LogOut size={14} className="shrink-0" />
+          Log Out
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 export default function Sidebar() {
   const { mode, setMode, activeLayer, setActiveLayer, map, selectItem } = useMapContext();
   const [collapsed, setCollapsed] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const meta = LAYER_META[activeLayer];
+  const { user, isLocalAdmin, signOut, adminSignOut } = useAuth();
+
+  const isLoggedIn = !!user || isLocalAdmin;
+  const displayName = user?.user_metadata?.display_name || user?.email?.split("@")[0] || (isLocalAdmin ? "Admin" : "");
+  const displayEmail = user?.email || (isLocalAdmin ? "admin@local" : "");
+  const showAdminLink = isAdmin(user?.email) || isLocalAdmin;
 
   const itemsQuery = useMapItems(activeLayer, undefined);
   const items = itemsQuery.data ?? [];
+
+  // Ref for the profile trigger button (desktop)
+  const profileBtnRef = useRef<HTMLButtonElement | null>(null);
 
   function handleLocate() {
     if (!map || !navigator.geolocation) return;
@@ -39,12 +164,36 @@ export default function Sidebar() {
     }
   }
 
+  async function handleLogout() {
+    setProfileOpen(false);
+    setMobileProfileOpen(false);
+    if (isLocalAdmin) adminSignOut();
+    await signOut();
+  }
+
+  const initial = displayName ? displayName.charAt(0).toUpperCase() : "?";
+
   return (
     <>
-      {/* ── Desktop Dock ── */}
-      <div className={`hidden md:fixed md:left-3 md:top-3 md:bottom-3 md:flex md:flex-col md:items-center z-[1000] pointer-events-none transition-all duration-300 ${collapsed ? "md:w-14" : "md:w-[170px]"}`}>
-        <div className="sidebar-card pointer-events-auto flex flex-col py-3 h-full max-h-[90vh] overflow-hidden">
-          {/* Header */}
+      {/* ── Portal dropdown (outside overflow containers) ── */}
+      <ProfileDropdown
+        anchorRef={profileBtnRef}
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        displayName={displayName}
+        displayEmail={displayEmail}
+        showAdminLink={showAdminLink}
+        visibleCount={items.length}
+        onLogout={handleLogout}
+      />
+
+      {/* ── Desktop Sidebar ── */}
+      <div
+        className={`hidden md:fixed md:left-3 md:top-3 md:bottom-3 md:flex md:flex-col md:items-center z-[1000] pointer-events-none transition-all duration-300 ${collapsed ? "md:w-14" : "md:w-[170px]"}`}
+      >
+        {/* Sidebar card — NO overflow:hidden so dropdown can escape */}
+        <div className="sidebar-card pointer-events-auto flex flex-col py-3 h-full max-h-[90vh]">
+          {/* Logo Header */}
           <div className={`flex items-center gap-2 px-3 mb-3 ${collapsed ? "justify-center" : ""}`}>
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center text-white text-xs font-black shadow-lg shrink-0">U</div>
             {!collapsed && (
@@ -60,54 +209,87 @@ export default function Sidebar() {
 
           {!collapsed && <div className="px-3 mb-1.5"><span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Layers</span></div>}
 
-          <div className="flex flex-col gap-0.5 px-1.5">
+          {/* Layers — scrollable */}
+          <div className="flex flex-col gap-0.5 px-1.5 overflow-y-auto flex-1">
             {LAYER_ORDER.map((layerId) => {
               const lm = LAYER_META[layerId];
               const isActive = activeLayer === layerId;
               return (
-                <button key={layerId} onClick={() => setActiveLayer(layerId)}
+                <button
+                  key={layerId}
+                  onClick={() => setActiveLayer(layerId)}
                   className={`stagger-item group relative flex items-center gap-2 rounded-lg cursor-pointer transition-all duration-200 hover-lift ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"} ${isActive ? `${lm.accentBg} text-white shadow-md` : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
-                  aria-label={lm.label}>
+                  aria-label={lm.label}
+                >
                   <span className="shrink-0">{layerIcons[layerId]}</span>
                   {!collapsed && <span className="text-xs font-medium truncate">{lm.label}</span>}
-                  {collapsed && <span className="absolute left-full ml-2 bg-slate-800 text-white text-[9px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-50">{lm.label}</span>}
+                  {collapsed && (
+                    <span className="absolute left-full ml-2 bg-slate-800 text-white text-[9px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-50">
+                      {lm.label}
+                    </span>
+                  )}
                 </button>
               );
             })}
-          </div>
 
-          <div className={`${collapsed ? "mx-1.5" : "mx-2.5"} h-px bg-slate-200/60 my-2`} />
+            <div className={`${collapsed ? "mx-1.5" : "mx-1"} h-px bg-slate-200/60 my-1.5`} />
 
-          <div className="px-1.5">
-            <button onClick={() => setMode(mode === "addSpot" ? "browse" : "addSpot")}
-              className={`group relative flex items-center gap-2 rounded-lg cursor-pointer transition-all duration-200 w-full hover-lift ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"} ${mode === "addSpot" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
-              aria-label={meta.addLabel}>
+            {/* Add Spot */}
+            <button
+              onClick={() => setMode(mode === "addSpot" ? "browse" : "addSpot")}
+              className={`group relative flex items-center gap-2 rounded-lg cursor-pointer transition-all duration-200 hover-lift ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"} ${mode === "addSpot" ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
+              aria-label={meta.addLabel}
+            >
               <PlusCircle size={14} className={`shrink-0 transition-transform duration-300 ${mode === "addSpot" ? "rotate-45" : ""}`} />
               {!collapsed && <span className="text-xs font-medium">{meta.addLabel}</span>}
             </button>
           </div>
 
-          <div className="flex-1" />
-
-          <div className="flex flex-col gap-0.5 px-1.5 mt-1.5">
-            <button onClick={handleLocate}
+          {/* Bottom actions */}
+          <div className="flex flex-col gap-0.5 px-1.5 pt-2 border-t border-slate-100 mt-1.5">
+            <button
+              onClick={handleLocate}
               className={`group relative flex items-center gap-2 rounded-lg text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"}`}
-              aria-label="My Location">
+              aria-label="My Location"
+            >
               <Locate size={14} className="shrink-0" />
               {!collapsed && <span className="text-xs font-medium">My Location</span>}
             </button>
-            <a href="/login"
-              className={`group relative flex items-center gap-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"}`}
-              aria-label="Login">
-              <LogIn size={14} className="shrink-0" />
-              {!collapsed && <span className="text-xs font-medium">Login</span>}
-            </a>
+
+            {/* Profile or Login */}
+            {isLoggedIn ? (
+              <button
+                ref={profileBtnRef}
+                onClick={() => setProfileOpen((o) => !o)}
+                className={`group relative flex items-center gap-2 rounded-lg transition-all duration-200 w-full ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"} ${profileOpen ? "bg-blue-50 text-blue-600" : "text-slate-400 hover:bg-slate-50 hover:text-slate-800"}`}
+                aria-label="User Profile"
+              >
+                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+                  {initial}
+                </div>
+                {!collapsed && <span className="text-xs font-medium truncate max-w-[90px]">{displayName}</span>}
+                {collapsed && (
+                  <span className="absolute left-full ml-2 bg-slate-800 text-white text-[9px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-lg z-50">
+                    {displayName}
+                  </span>
+                )}
+              </button>
+            ) : (
+              <a
+                href="/login"
+                className={`group relative flex items-center gap-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-800 transition-all duration-200 ${collapsed ? "p-2 justify-center" : "px-2.5 py-1.5"}`}
+                aria-label="Login"
+              >
+                <LogIn size={14} className="shrink-0" />
+                {!collapsed && <span className="text-xs font-medium">Login</span>}
+              </a>
+            )}
           </div>
         </div>
       </div>
 
       {/* ═══════════════════════════════════════ */}
-      {/* ── Mobile Bottom Nav (LARGER for mobile) ── */}
+      {/* ── Mobile Bottom Nav ── */}
       {/* ═══════════════════════════════════════ */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[1000] pointer-events-none">
 
@@ -119,7 +301,7 @@ export default function Sidebar() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm">{meta.emoji}</span>
                   <span className="text-xs font-bold text-slate-800">Nearby {meta.statLabel}</span>
-                  <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full animate-count-up">{items.length}</span>
+                  <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{items.length}</span>
                 </div>
                 <button onClick={() => setListOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg transition">
                   <X size={16} className="text-slate-400" />
@@ -139,37 +321,116 @@ export default function Sidebar() {
           </div>
         )}
 
-        {/* ── Action Row (BIGGER for mobile) ── */}
+        {/* ── Action Row ── */}
         <div className="pointer-events-auto bg-gradient-to-t from-white via-white/90 to-transparent pt-2">
           <div className="flex items-center justify-center gap-2 px-3 mb-1.5">
-            <button onClick={handleLocate}
-              className="px-3.5 py-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold min-h-[44px]">
+            <button
+              onClick={handleLocate}
+              className="px-3.5 py-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold min-h-[44px]"
+            >
               <Locate size={16} className="text-blue-500" />
               <span>Near Me</span>
             </button>
 
-            <button onClick={() => setMode(mode === "addSpot" ? "browse" : "addSpot")}
-              className={`px-4 py-2.5 rounded-xl shadow-md font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all min-h-[44px] ${mode === "addSpot" ? "bg-slate-900 text-white" : meta.ctaClass}`}>
+            <button
+              onClick={() => setMode(mode === "addSpot" ? "browse" : "addSpot")}
+              className={`px-4 py-2.5 rounded-xl shadow-md font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all min-h-[44px] ${mode === "addSpot" ? "bg-slate-900 text-white" : meta.ctaClass}`}
+            >
               <PlusCircle size={16} className={`transition-transform duration-300 ${mode === "addSpot" ? "rotate-45" : ""}`} />
               <span>{mode === "addSpot" ? "Cancel" : meta.addLabel}</span>
             </button>
 
-            <button onClick={() => setListOpen(!listOpen)}
-              className={`px-3.5 py-2.5 rounded-xl shadow-sm border border-slate-100 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold min-h-[44px] ${listOpen ? `${meta.accentBg} text-white border-transparent` : "bg-white text-slate-600"}`}>
+            <button
+              onClick={() => setListOpen(!listOpen)}
+              className={`px-3.5 py-2.5 rounded-xl shadow-sm border border-slate-100 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold min-h-[44px] ${listOpen ? `${meta.accentBg} text-white border-transparent` : "bg-white text-slate-600"}`}
+            >
               {listOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
               <span>List</span>
             </button>
+
+            {/* Mobile: User/Login */}
+            {isLoggedIn ? (
+              <button
+                onClick={() => setMobileProfileOpen(true)}
+                className="px-2.5 py-2.5 bg-white rounded-xl shadow-sm border border-slate-100 active:scale-95 transition-all min-h-[44px]"
+              >
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold">
+                  {initial}
+                </div>
+              </button>
+            ) : (
+              <a
+                href="/login"
+                className="px-3.5 py-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold min-h-[44px]"
+              >
+                <LogIn size={16} className="text-slate-500" />
+              </a>
+            )}
           </div>
 
-          {/* ── Animated Layer Pill Slider (mobile — BIGGER) ── */}
+          {/* Layer Pill Slider */}
           <MobileLayerSlider activeLayer={activeLayer} onLayerChange={(l) => { setActiveLayer(l); setListOpen(false); }} />
         </div>
+
+        {/* Mobile Profile Sheet */}
+        {mobileProfileOpen && isLoggedIn && (
+          <div className="pointer-events-auto fixed inset-0 z-[2000]" onClick={() => setMobileProfileOpen(false)}>
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="absolute bottom-0 left-0 right-0 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-white mx-2 mb-2 rounded-2xl overflow-hidden shadow-2xl">
+                {/* Sheet handle */}
+                <div className="flex justify-center pt-3 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-slate-200" />
+                </div>
+                {/* Gradient header */}
+                <div className="px-4 pt-3 pb-4 bg-gradient-to-br from-blue-600 to-purple-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                      {initial}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-bold text-white truncate">{displayName}</p>
+                      <p className="text-sm text-white/70 truncate">{displayEmail}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0 mt-3 bg-white/10 rounded-lg overflow-hidden">
+                    <div className="flex-1 py-2 text-center border-r border-white/20">
+                      <p className="text-lg font-bold text-white">{items.length}</p>
+                      <p className="text-[9px] text-white/60 uppercase tracking-wider">Visible</p>
+                    </div>
+                    <div className="flex-1 py-2 text-center border-r border-white/20">
+                      <p className="text-lg font-bold text-white">{LAYER_ORDER.length}</p>
+                      <p className="text-[9px] text-white/60 uppercase tracking-wider">Layers</p>
+                    </div>
+                    <div className="flex-1 py-2 text-center">
+                      <p className="text-lg font-bold text-white">🌍</p>
+                      <p className="text-[9px] text-white/60 uppercase tracking-wider">UniMap</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Menu */}
+                <div className="py-1">
+                  {showAdminLink && (
+                    <a href="/admin" className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
+                      <Shield size={18} className="text-amber-500" />
+                      Admin Dashboard
+                    </a>
+                  )}
+                  <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 transition w-full text-left">
+                    <LogOut size={18} />
+                    Log Out
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
 }
 
-/* ── Animated Mobile Layer Slider (BIGGER) ── */
+/* ── Animated Mobile Layer Slider ── */
 function MobileLayerSlider({ activeLayer, onLayerChange }: { activeLayer: MapLayer; onLayerChange: (l: MapLayer) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -179,10 +440,8 @@ function MobileLayerSlider({ activeLayer, onLayerChange }: { activeLayer: MapLay
     const activeBtn = pillRefs.current[activeLayer];
     const track = trackRef.current;
     if (!activeBtn || !track) return;
-
     const trackRect = track.getBoundingClientRect();
     const btnRect = activeBtn.getBoundingClientRect();
-
     setIndicatorStyle({
       left: btnRect.left - trackRect.left,
       width: btnRect.width,
@@ -196,12 +455,7 @@ function MobileLayerSlider({ activeLayer, onLayerChange }: { activeLayer: MapLay
   return (
     <div className="flex justify-center bg-white/98 border-t border-slate-100 px-3 py-1.5 pb-safe">
       <div ref={trackRef} className="layer-slider-track relative">
-        {/* Animated background indicator */}
-        <div
-          className={`absolute top-[3px] ${activeMeta.accentBg} rounded-[11px] shadow-md z-0`}
-          style={indicatorStyle}
-        />
-
+        <div className={`absolute top-[3px] ${activeMeta.accentBg} rounded-[11px] shadow-md z-0`} style={indicatorStyle} />
         {LAYER_ORDER.map((layerId) => {
           const lm = LAYER_META[layerId];
           const isActive = activeLayer === layerId;
@@ -222,7 +476,7 @@ function MobileLayerSlider({ activeLayer, onLayerChange }: { activeLayer: MapLay
   );
 }
 
-/* ── Nearby List Item (BIGGER for mobile) ── */
+/* ── Nearby List Item ── */
 function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLayer; onClick: () => void }) {
   const meta = LAYER_META[layer];
 
@@ -282,7 +536,7 @@ function NearbyListItem({ item, layer, onClick }: { item: MapItem; layer: MapLay
           <span className="text-[11px] text-slate-400 truncate">{getSubtitle()}</span>
           {getBadges()}
           {timeStr && (
-            <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-slate-400 timestamp">
+            <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-slate-400">
               <Clock size={8} />{timeStr}
             </span>
           )}

@@ -123,7 +123,13 @@ export default function CreateSpotModal({
   return (
     <>
       {/* ── Bottom Sheet — sits above mobile nav ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[9999] md:left-[204px] animate-slide-up pointer-events-auto" style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}>
+      <div
+        className="fixed bottom-0 left-0 right-0 z-[9999] md:left-[204px] animate-slide-up pointer-events-auto"
+        style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <div ref={formRef} className="create-sheet mx-auto max-w-lg md:mb-0 mb-[120px]">
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1.5">
